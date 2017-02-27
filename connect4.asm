@@ -211,34 +211,34 @@ DB_draw:
 DB_0:
 		li	$v0, 11
 		li	$a0, 95
-		syscall
+		syscall				# Print underscore (empty)
 		li	$v0, 11
 		li	$a0, 32
-		syscall
-		j	DB_back
+		syscall				# Print space
+		j	DB_back			# Jump back
 DB_1:
 		li	$v0, 11
 		li	$a0, 79
-		syscall
+		syscall				# Print O (player 1)
 		li	$v0, 11
 		li	$a0, 32
-		syscall
-		j	DB_back
+		syscall				# Print space
+		j	DB_back			# Jump back
 DB_2:
 		li	$v0, 11
 		li	$a0, 88
-		syscall
+		syscall				# Print X (player 2 / AI)
 		li	$v0, 11
 		li	$a0, 32
-		syscall
-		j	DB_back
+		syscall				# Print space
+		j	DB_back			# Jump back
 DB_end:
 		li	$s1, 0			# Reset column ($s1) to 0
 		li	$v0, 4
 		la	$a0, row_end
 		syscall
 DB_back:
-		jr	$ra
+		jr	$ra			# TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
 		
 
 # PlayerTurn component
