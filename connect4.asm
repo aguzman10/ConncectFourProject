@@ -1,23 +1,21 @@
 ##################################################
 #
 #  Connect-Four program
-#  Written by ...
+#  Written by:
+#	Alejandro Guzman - axg130730
+#	Jose Munoz - jam151830
+#	Joseph Kang - jxk141830
+#	Nick Fryar - nrf160030
 #  25 April 2017
 #
 #  Description ...
 #
 ##################################################
-		
+
 		.data
-<<<<<<< HEAD
 board:		.space	196	# 4 bytes per space (0, 1, 2, and 3 for empty, p1, p2, and binding respectively )
 title:		.asciiz	"\n===== Connect-Four =====\n"
 options:	.asciiz "\n1) Player v. AI\n2) Player v. Player\n3) Instructions\n4) Exit\n"
-=======
-board:		.space	168	# 2 bytes per space (0, 1, 2 for empty, p1, p2 respectively [4 not used])
-title:		.asciiz	"\n===== Connect-Four ====="
-options:	.asciiz "\n\n1) Player v. AI\n2) Player v. Player\n3) Instructions\n4) Exit\n"
->>>>>>> origin/master
 prompt:		.asciiz	" : "
 piece:		.asciiz "| "
 row_end:	.asciiz "|\n"
@@ -29,22 +27,18 @@ close:		.asciiz	"\nThanks for playing!"
 instruct1:	.asciiz "\nDrop markers into columns from the top of the board and\n"
 instruct2:	.asciiz "try to get four pieces in a row (horizontal, vertical, or diagonal).\n"
 instruct3:	.asciiz "Note: markers can only be placed in columns with empty space.\n"
-<<<<<<< HEAD
 win_message:	.asciiz	"SOMEONE WON!"
-=======
-instruct4:	.asciiz	"(press enter to return)\n"
->>>>>>> origin/master
 		
 		.text
-# Menu component
-#	This is the entry point for the program.
-#	Displays options to the user and jumps to the appropriate
-#	subroutine based on their choice.
-Menu:
-		# Print title screen
+# Entry point
 		li	$v0, 4
 		la	$a0, title
 		syscall				# Print title
+
+# Menu component
+#	Displays options to the user and jumps to the appropriate
+#	subroutine based on their choice.
+Menu:
 		li	$v0, 4
 		la	$a0, options
 		syscall				# Print options
@@ -127,6 +121,7 @@ PvP_loop:
 #	Simply displays the instructions to the user before
 #	returning to the menu.
 Ins:
+		# Print instructions
 		li	$v0, 4
 		la	$a0, instruct1
 		syscall
@@ -136,16 +131,11 @@ Ins:
 		li	$v0, 4
 		la	$a0, instruct3
 		syscall
-		li	$v0, 4
-		la	$a0, instruct4
-		syscall
-		# TODO: prompt user to press enter to return to menu?
 		jr	$ra
 		
 # MakeBoard component
 #	Clears the board (i.e. sets all words to 0.) then returns to caller.	
 MakeBoard:
-<<<<<<< HEAD
 		li	$t0, 0			# Set $t0 to 0 (starting value)
 MB_loop1:
 		beq	$t0, 168, MB_loop2	# Stop if end of board has been reached
@@ -158,20 +148,8 @@ MB_loop2:
 		sw	$t1, board($t0)		# Store 0 at the base address plus the offset ($t0)
 		addi	$t0, $t0, 4		# $t0 += 4
 		j	MB_loop2		# Jump to start of loop
-=======
-		li	$t0, 0
-		li	$t1, 164
-		la	$t2, board
-MB_loop:
-		beq	$t0, $t1, MB_stop
-		li	$t3, 0
-		add	$t4, $t0, $t2
-		sw	$t3, 0($t4)
-		addi	$t0, $t0, 4
-		j	MB_loop
->>>>>>> origin/master
 MB_stop:
-		jr	$ra
+		jr	$ra			# Jump back to caller
 
 
 # DrawBoard component
@@ -181,12 +159,13 @@ MB_stop:
 #	1 = player 1
 #	2 = player 2 (or AI)
 DrawBoard:
+		# Initialize row and column registers to 0
 		li	$s0, 0			# Rows
 		li	$s1, 0			# Columns
 DB_loop1:
-		li	$t0, 6
-		beq	$s0, $t0, DB_back	# If $s0 = 6, jump back
+		beq	$s0, 6, DB_back		# If $s0 = 6, jump back
 		
+		# Store/restore $ra and call loop
 		addi	$sp, $sp, -4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stack
 		jal	DB_loop2		# Jump and link to DB_loop2
@@ -194,24 +173,26 @@ DB_loop1:
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		li	$s1, 0			# Reset column ($s1) to 0
 		
-		addi	$s0, $s0, 1		# Increment $s0
+		# Increment $s0 and loop again
+		addi	$s0, $s0, 1		# $s0 ++
 		j	DB_loop1		# Jump back to DB_loop1
 DB_loop2:
-		li	$t0, 7
-		beq	$s1, $t0, DB_end	# If $s1 = 7, end row
+		beq	$s1, 7, DB_end		# If $s1 = 7, end row
 		
-		addi	$sp, $sp, -4
-		sw	$ra, 0($sp)
-		jal	DB_draw
-		lw	$ra, 0($sp)
-		addi	$sp, $sp, 4
+		# Store/restore $ra and call draw
+		addi	$sp, $sp, -4		# Get space for $ra on the stack
+		sw	$ra, 0($sp)		# Store $ra to the stac
+		jal	DB_draw			# Jump and link to DB_draw
+		lw	$ra, 0($sp)		# Restore $ra from the stack
+		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		
-		addi	$s1, $s1, 1		# Increment $s1
+		# Increment $s1 and loop again
+		addi	$s1, $s1, 1		# $s1 ++
 		j	DB_loop2		# Jump back to DB_loop1
 DB_draw:
-		li	$v0, 4			# Load the syscall code for printing a string
+		li	$v0, 4
 		la	$a0, piece
-		syscall
+		syscall				# Print the separator
 		
 		add	$t0, $s0, $zero		# Set $t0 to the current row ($s0)
 		li	$t1, 7
@@ -220,7 +201,6 @@ DB_draw:
 		add	$t0, $t0, $s1		# Add the current column to $t0
 		sll	$t0, $t0, 2		# Multiply index ($t0) by 4 because each space on the board is a word
 		
-<<<<<<< HEAD
 		# Load the marker on the board and print the appropriate character
 		lw	$t1, board($t0)		# Load the word at the given index on the board into $t1
 		beq	$t1, 0, DB_0		# If ($t1 == 0), branch to DB_0
@@ -229,17 +209,8 @@ DB_draw:
 		beq	$t1, 3, DB_end
 		j	Exit
 #						TODO: handle this error (space on board isn't 0, 1, or 2)
-=======
-		la	$t1, board
-		add	$t2, $t0, $t1
-		lw	$t3, 0($t2)
-		
-		beq	$t3, 0, DB_0
-		beq	$t3, 1, DB_1
-		beq	$t3, 2, DB_2
-		j	Exit			# TODO: handle this error (space on board isn't 0, 1, or 2)
->>>>>>> origin/master
 DB_0:
+		# Empty space
 		li	$v0, 11
 		li	$a0, 95
 		syscall				# Print underscore (empty)
@@ -248,6 +219,7 @@ DB_0:
 		syscall				# Print space
 		j	DB_back			# Jump back
 DB_1:
+		# Player 1 marker
 		li	$v0, 11
 		li	$a0, 79
 		syscall				# Print O (player 1)
@@ -256,6 +228,7 @@ DB_1:
 		syscall				# Print space
 		j	DB_back			# Jump back
 DB_2:
+		# Player 2 / AI marker
 		li	$v0, 11
 		li	$a0, 88
 		syscall				# Print X (player 2 / AI)
@@ -268,7 +241,8 @@ DB_end:
 		la	$a0, row_end
 		syscall
 DB_back:
-		jr	$ra			# TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
+		jr	$ra
+#						TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
 		
 
 # PlayerTurn component
@@ -276,48 +250,46 @@ DB_back:
 #	drop a piece, then (if the column is empty and the column is within
 #	bounds) drops a piece to the lowest empty slot in the column.
 PTurn:
+		# Store #a0 (indicator) on the stack
 		subi	$sp, $sp, 4		# Get space on stack for $a0
 		sw	$a0, 0($sp)		# Store $a0 on the stack
 		
+		# User selects column
 		li	$v0, 4
 		la	$a0, turn
 		syscall				# Print turn prompt
 		li	$v0, 5
 		syscall				# Get input from user
 		
+		# Restore $a0 from the stack
 		lw	$a0, 0($sp)		# Load $a0 back from stack
 		addi	$sp, $sp, 4		# Remove space for $a0 from stack
 		
-		li	$t0, 8
-		slt	$t1, $v0, $t0
-		beq	$t1, $zero, PTurn	# Restart prompt if input > 7
-#		TODO: check if number is > 0 !!
-#		TODO: display error messages to user for invalid input
-		add	$t0, $v0, $zero		# Set $t0 to $v0
-		la	$t1, board		# Load the base address of the board into $t1
+		# Check bounds for column selection
+		slti	$t0, $v0, 1
+		beq	$t0, 1, PTurn		# Restart prompt if input < 1
+		slti	$t0, $v0, 8
+		beq	$t0, $zero, PTurn	# Restart prompt if input > 7
 		
-		subi	$t0, $t0, 1		# Subtract 1 from $t0 (because indices start at 0)
-		sll	$t0, $t0, 2		# Multiply $t0 by 4
-		add	$t2, $t0, $t1		# Set $t2 to the base address ($t1) plus the index ($t0)
-		lw	$t3, 0($t2)		# Load the word from the address ($t2) into $t3
-		bne	$t3, $zero, PTurn	# Restart prompt if column is full
+#		TODO: display error messages to user for invalid input (!)
+
+		# Get first item in column and check if it's 0 (empty)
+		move	$t0, $v0		# Set $t0 to $v0 (for calculations)
+		subi	$t0, $t0, 1		# Subtract 1 from $t0 (indices start at 0)
+		sll	$t0, $t0, 2		# Multiply $t0 by 4 (each space on board = 1 word = 4 bytes)
+		lw	$t1, board($t0)		# Load the word at the base address plus offset ($t0)
+		bne	$t1, $zero, PTurn	# Restart prompt if column is full
 PT_loop:
 		addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 		
-<<<<<<< HEAD
 #		TODO: check if bottom of column has been reached (!)
-=======
-		# TODO check if bottom of column has been reached ??
->>>>>>> origin/master
 		
-		add	$t2, $t0, $t1		# Set $t2 to the base address ($t1) plus the index ($t0)
-		lw	$t3, 0($t2)		# Load the word from the address ($t2) into $t3
-		beq	$t3, $zero, PT_loop	# If the space is empty, move down again
+		lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0) 
+		beq	$t2, $zero, PT_loop	# If the space is empty, move down again
 PT_up:
+		# Move back up a space on the board if the space isn't empty or the end of the column was reached
 		subi	$t0, $t0, 28		# Else, move back up one row (sub 4 * 7)
-		add	$t2, $t0, $t1		# Set $t2 to the base address ($t1) plus the index ($t0)
 PT_set:
-<<<<<<< HEAD
 		# Place the marker on the board and jump back to caller
 		sw	$a0, board($t0)		# Store indicator value ($t3) at the base address plus offset ($t0)
 		
@@ -329,10 +301,6 @@ PT_set:
 		lw	$v0, 4($sp)
 		lw	$ra, 0($sp)
 		addi	$sp, $sp, 8
-=======
-		sw	$a0, 0($t2)		# Store indicator ($t3) in the address ($t2)
-		
->>>>>>> origin/master
 		jr	$ra			# Jump back
 
 		
