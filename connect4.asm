@@ -13,7 +13,7 @@
 ##################################################
 
 		.data
-board:		.space	168	# 2 bytes per space (0, 1, 2 for empty, p1, p2 respectively [4 not used])
+board:		.space	196	# 4 bytes per space (0, 1, 2, and 3 for empty, p1, p2, and binding respectively )
 title:		.asciiz	"\n===== Connect-Four =====\n"
 options:	.asciiz "\n1) Player v. AI\n2) Player v. Player\n3) Instructions\n4) Exit\n"
 prompt:		.asciiz	" : "
@@ -27,6 +27,7 @@ close:		.asciiz	"\nThanks for playing!"
 instruct1:	.asciiz "\nDrop markers into columns from the top of the board and\n"
 instruct2:	.asciiz "try to get four pieces in a row (horizontal, vertical, or diagonal).\n"
 instruct3:	.asciiz "Note: markers can only be placed in columns with empty space.\n"
+win_message:	.asciiz	"SOMEONE WON!"
 		
 		.text
 # Entry point
@@ -78,13 +79,11 @@ PvE:
 PvE_loop:
 		li	$a0, 1
 		jal	PTurn			# Jump and link to PTurn (player turn)
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
+		#jal	CheckWin
 		li	$a0, 2
 		jal	AITurn			# Jump and link to AITurn (AI turn)
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
-		#addi	$s7, $s7, 1			# TEMP:		increment s7
-		#bne	$s7, 10, PvE_loop		# TEMP:		branch back if s7 != 10
-			j PvE_loop
+		#jal	CheckWin
+			j PvE_loop			# TEMP
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		jr	$ra			# Jump back to caller
@@ -98,8 +97,6 @@ PvE_loop:
 PvP:
 		addi	$sp, $sp, -4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stack
-		
-		#li	$t7, 0				# TEMP:		set s7 to 0
 		jal	MakeBoard
 		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
 PvP_loop:
@@ -108,16 +105,14 @@ PvP_loop:
 		syscall				# Print p1_turn
 		li	$a0, 1			# Set indicator ($a0) to 1
 		jal	PTurn			# Jump and link to PTurn (player turn) for P1
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
+		#jal	CheckWin
 		li	$v0, 4
 		la	$a0, p2_turn
 		syscall				# Print p2_turn
 		li	$a0, 2			# Set indicator ($a0) to 2
 		jal	PTurn			# Jump and link to PTurn (player turn) for P2
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
-		#addi	$s7, $s7, 1			# TEMP:		increment s7
-		#bne	$s7, 10, PvP_loop		# TEMP:		branch back if s7 != 10
-			j PvP_loop
+		#jal	CheckWin
+			j PvP_loop			# TEMP
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		jr	$ra			# Jump back to caller
@@ -142,11 +137,17 @@ Ins:
 #	Clears the board (i.e. sets all words to 0.) then returns to caller.	
 MakeBoard:
 		li	$t0, 0			# Set $t0 to 0 (starting value)
-MB_loop:
-		beq	$t0, 164, MB_stop	# Stop if end of board has been reached
+MB_loop1:
+		beq	$t0, 168, MB_loop2	# Stop if end of board has been reached
 		sw	$zero, board($t0)	# Store 0 at the base address plus the offset ($t0)
 		addi	$t0, $t0, 4		# $t0 += 4
-		j	MB_loop			# Jump to start of loop
+		j	MB_loop1			# Jump to start of loop
+MB_loop2:
+		beq	$t0, 200, MB_stop	# Stop if end of board has been reached
+		li	$t1, 3
+		sw	$t1, board($t0)		# Store 0 at the base address plus the offset ($t0)
+		addi	$t0, $t0, 4		# $t0 += 4
+		j	MB_loop2		# Jump to start of loop
 MB_stop:
 		jr	$ra			# Jump back to caller
 
@@ -170,6 +171,7 @@ DB_loop1:
 		jal	DB_loop2		# Jump and link to DB_loop2
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
+		li	$s1, 0			# Reset column ($s1) to 0
 		
 		# Increment $s0 and loop again
 		addi	$s0, $s0, 1		# $s0 ++
@@ -204,6 +206,7 @@ DB_draw:
 		beq	$t1, 0, DB_0		# If ($t1 == 0), branch to DB_0
 		beq	$t1, 1, DB_1		# If ($t1 == 1), branch to DB_1
 		beq	$t1, 2, DB_2		# If ($t1 == 2), branch to DB_2
+		beq	$t1, 3, DB_end
 		j	Exit
 #						TODO: handle this error (space on board isn't 0, 1, or 2)
 DB_0:
@@ -234,7 +237,6 @@ DB_2:
 		syscall				# Print space
 		j	DB_back			# Jump back
 DB_end:
-		li	$s1, 0			# Reset column ($s1) to 0
 		li	$v0, 4
 		la	$a0, row_end
 		syscall
@@ -281,12 +283,6 @@ PT_loop:
 		addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 		
 #		TODO: check if bottom of column has been reached (!)
-#			right now, the loop moves down the column, loading the words from the board,
-#			stops if the word isn't equal to 0, then moves back up one space to store
-#			the indicator (1 or 2). i guess addresses outside the board aren't equal to
-#			zero by default, so that's why this works?
-#			should we extend the board to include a row of stops (e.g. words set to some
-#			value other than 0) just to be safe?
 		
 		lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0) 
 		beq	$t2, $zero, PT_loop	# If the space is empty, move down again
@@ -296,6 +292,15 @@ PT_up:
 PT_set:
 		# Place the marker on the board and jump back to caller
 		sw	$a0, board($t0)		# Store indicator value ($t3) at the base address plus offset ($t0)
+		
+		subi	$sp, $sp, 8
+		sw	$ra, 0($sp)
+		jal	CheckWin
+		sw	$v0, 4($sp)
+		jal	DrawBoard
+		lw	$v0, 4($sp)
+		lw	$ra, 0($sp)
+		addi	$sp, $sp, 8
 		jr	$ra			# Jump back
 
 		
@@ -306,6 +311,12 @@ AITurn:
 		la	$a0, ai_turn
 		syscall
 #	TODO: implement this
+			subi $sp, $sp, 4
+			sw $ra, 0($sp)
+			#jal	CheckWin
+			#jal	DrawBoard
+			lw $ra, 0($sp)
+			addi $sp, $sp, 4
 		jr	$ra
 AIRand:
 #	TODO: implement this
@@ -316,11 +327,9 @@ AIStrat:
 # CheckWin component
 #	Checks for wins on the board (horizontal, vertical, and diagonal).
 #	If a win is found, 1 is returned in $v0. Otherwise, 0 is returned in $v0.
+#	Arguments: $a0 (marker), $a1 (index)
 CheckWin:
-Vertical:
-Horizontal:
-DiagL:
-DiagR:
+		jr	$ra
 	
 
 # Exit component
