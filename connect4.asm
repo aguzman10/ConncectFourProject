@@ -28,6 +28,8 @@ instruct1:	.asciiz "\nDrop markers into columns from the top of the board and\n"
 instruct2:	.asciiz "try to get four pieces in a row (horizontal, vertical, or diagonal).\n"
 instruct3:	.asciiz "Note: markers can only be placed in columns with empty space.\n"
 win_message:	.asciiz	"SOMEONE WON!"
+difficulty:	.asciiz	"Please choose level of difficulty: 1 for Easy, 2 for Medium, 3 for Hard and 4 for exit."
+wrong_input:	.asciiz "\n\nWrong data was entered. Please try again."
 		
 		.text
 # Entry point
@@ -54,12 +56,15 @@ M_pro:
 		beq	$v0, 3, M_ins		# Branch to instructions option
 		beq	$v0, 4, Exit		# Branch to Exit
 		j	M_pro			# Prompt user again if input invalid
+# Player vs AI
 M_pve:
 		jal	PvE			# Jump and link to PvE
 		j	Menu			# Jump to menu
+# Player vs Player
 M_pvp:
 		jal	PvP			# Jump and link to PvP
 		j	Menu			# Jump to Menu
+# Display instructions
 M_ins:
 		jal	Ins			# Jump and link to Ins
 		j	Menu			# Jump to Menu
@@ -76,17 +81,83 @@ PvE:
 		
 		jal	MakeBoard		# Jump and link to MakeBoard (zero the board)
 		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
+		
+ask_difficulty:	
+		# Ask user for AI Difficulty
+		la	$a0, difficulty		# load address of the string for asking difficulty
+		li	$v0, 4			# instruction for print string
+		syscall				# execute
+		
+		# Read input from user for difficulty
+		li	$v0, 5			# instruction for read integer
+		syscall				# execute
+		move	$s1, $v0		# store this into one of the other registers so that $v0 may be used for other things
+		
+		# Checking to see if user wants to exit
+		li	$t0, 4
+#		beq	$s1, $t0, exit_PvE
+		
+		# Input validation
+		ble	$s1, $0, validate	# if input <= 0
+		bgt	$s1, $t0, validate	# if input > 4
+		
+
 PvE_loop:
 		li	$a0, 1
 		jal	PTurn			# Jump and link to PTurn (player turn)
 		#jal	CheckWin
 		li	$a0, 2
-		jal	AITurn			# Jump and link to AITurn (AI turn)
+		jal	AI_Time			# Jump and link to AITurn (AI turn)
 		#jal	CheckWin
 			j PvE_loop			# TEMP
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		jr	$ra			# Jump back to caller
+
+
+AI_Time:
+		addi	$sp, $sp, -4		# make space on stack pointer
+		sw	$ra, ($sp)		# store the return address in stack pointer
+		
+		# if choice == 1
+		li	$t0, 1
+		beq	$s1, $t0, easy
+		
+		# else if choice == 2
+		li	$t0, 2
+		beq	$s1, $t0, medium
+		
+		# else if choice == 3
+		li	$t0, 3
+		#beq	$s1, $t0, hard
+
+
+easy:
+		# easy is completely random
+		li	$a1, 8			# get random number between 0 and 7
+		li	$v0, 42			# instruction for get random integer
+		syscall				# execute
+		j	AITurn
+		
+medium:
+		# medium is mix of random and some strategy
+		# it will use winning strategy to determine the best spot to play
+		# then, it will use a random number between 0 and 2 to determine to play to the column on the left, right on the best column, or on the right to play
+		#jal	winning_strategy	# call winning strategy
+		
+		# pick a random integer between 0 and 2
+		li	$a1, 3			# get random number between 0 and 2
+		li	$v0, 42			# instruction for get random integer
+		syscall				# execute
+		addi	$a0, $a0, -1		# if the random integer is 1, then the amount to increment the column number would be zero
+		j	AITurn
+		
+validate:
+		la	$a0, wrong_input	# Load address of the string to tell user that wrong data entered
+		li	$v0, 4			# Instruction for print string
+		syscall				# Execute
+		
+		j	ask_difficulty		# Loop again
 
 
 # PvP component
@@ -272,7 +343,7 @@ PTurn:
 		beq	$t0, $zero, PTurn	# Restart prompt if input > 7
 		
 #		TODO: display error messages to user for invalid input (!)
-
+AI_Turn:
 		# Get first item in column and check if it's 0 (empty)
 		move	$t0, $v0		# Set $t0 to $v0 (for calculations)
 		subi	$t0, $t0, 1		# Subtract 1 from $t0 (indices start at 0)
@@ -307,9 +378,13 @@ PT_set:
 # AITurn component
 #	Handles turns for the AI.
 AITurn:
+		# Store #a0 (indicator) on the stack
+		move	$v0, $a0
+		
 		li	$v0, 4
 		la	$a0, ai_turn
 		syscall
+		j	AI_Turn
 #	TODO: implement this
 			subi $sp, $sp, 4
 			sw $ra, 0($sp)
