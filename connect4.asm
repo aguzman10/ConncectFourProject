@@ -36,7 +36,7 @@ prompt:		.asciiz	" : "
 row_end:	.asciiz "|\n"
 title:		.asciiz	"\n===== Connect-Four =====\n"
 turn:		.asciiz "\nChoose column to drop piece: "
-		
+
 		.text
 # Entry point
 		li	$v0, 4
@@ -56,7 +56,7 @@ M_pro:
 		syscall				# Print prompt
 		li	$v0, 5
 		syscall				# Get user input
-		
+
 		beq	$v0, 1, M_pve		# Branch to PvE option
 		beq	$v0, 2, M_pvp		# Branch to PvP option
 		beq	$v0, 3, M_ins		# Branch to instructions option
@@ -71,8 +71,8 @@ M_pvp:
 M_ins:
 		jal	Ins			# Jump and link to Ins
 		j	Menu			# Jump to Menu
-		
-		
+
+
 # PvE component
 #	Handles the gameplay between the player and the AI.
 #	Loops between turns until the player or the AI wins and
@@ -176,7 +176,7 @@ PvP_back:
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		jr	$ra			# Jump back to caller
-		
+
 # Instruction component
 #	Simply displays the instructions to the user before
 #	returning to the menu.
@@ -192,9 +192,9 @@ Ins:
 		la	$a0, instruct3
 		syscall
 		jr	$ra
-		
+
 # MakeBoard component
-#	Clears the board (i.e. sets all words to 0.) then returns to caller.	
+#	Clears the board (i.e. sets all words to 0.) then returns to caller.
 MakeBoard:
 		li	$t0, 0			# Set $t0 to 0 (starting value)
 MB_loop1:
@@ -224,7 +224,7 @@ DrawBoard:
 		li	$s1, 0			# Columns
 DB_loop1:
 		beq	$s0, 6, DB_back		# If $s0 = 6, jump back
-		
+
 		# Store/restore $ra and call loop
 		addi	$sp, $sp, -4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stack
@@ -232,20 +232,20 @@ DB_loop1:
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
 		li	$s1, 0			# Reset column ($s1) to 0
-		
+
 		# Increment $s0 and loop again
 		addi	$s0, $s0, 1		# $s0 ++
 		j	DB_loop1		# Jump back to DB_loop1
 DB_loop2:
 		beq	$s1, 7, DB_end		# If $s1 = 7, end row
-		
+
 		# Store/restore $ra and call draw
 		addi	$sp, $sp, -4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stac
 		jal	DB_draw			# Jump and link to DB_draw
 		lw	$ra, 0($sp)		# Restore $ra from the stack
 		addi	$sp, $sp, 4		# Remove space for $ra from stack
-		
+
 		# Increment $s1 and loop again
 		addi	$s1, $s1, 1		# $s1 ++
 		j	DB_loop2		# Jump back to DB_loop1
@@ -253,14 +253,14 @@ DB_draw:
 		li	$v0, 4
 		la	$a0, piece
 		syscall				# Print the separator
-		
+
 		add	$t0, $s0, $zero		# Set $t0 to the current row ($s0)
 		li	$t1, 7
 		mult	$t0, $t1		# Multiply $t0 by 7 ($t1)
 		mflo	$t0			# Move the product into $t0
 		add	$t0, $t0, $s1		# Add the current column to $t0
 		sll	$t0, $t0, 2		# Multiply index ($t0) by 4 because each space on the board is a word
-		
+
 		# Load the marker on the board and print the appropriate character
 		lw	$t1, board($t0)		# Load the word at the given index on the board into $t1
 		beq	$t1, 0, DB_0		# If ($t1 == 0), branch to DB_0
@@ -303,7 +303,7 @@ DB_end:
 DB_back:
 		jr	$ra
 #	TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
-		
+
 
 # PlayerTurn component
 #	Handles turns for players. Asks the player to choose a column to
@@ -313,27 +313,27 @@ PTurn:
 		# Store #a0 (indicator) on the stack
 		subi	$sp, $sp, 4		# Get space on stack for $a0
 		sw	$a0, 0($sp)		# Store $a0 on the stack
-		
+
 		# User selects column
 		li	$v0, 4
 		la	$a0, turn
 		syscall				# Print turn prompt
 		li	$v0, 5
 		syscall				# Get input from user
-		
+
 		# Restore $a0 from the stack
 		lw	$a0, 0($sp)		# Load $a0 back from stack
 		addi	$sp, $sp, 4		# Remove space for $a0 from stack
-		
+
 		# Check bounds for column selection
 		slti	$t0, $v0, 1
 		beq	$t0, 1, PTurn		# Restart prompt if input < 1
 		slti	$t0, $v0, 8
 		beq	$t0, $zero, PTurn	# Restart prompt if input > 7
-		
+
 #	TODO: display error messages to user for invalid input (!)
 
-		
+
 
 		# Get first item in column and check if it's 0 (empty)
 		move	$t0, $v0		# Set $t0 to $v0 (for calculations)
@@ -341,12 +341,15 @@ PTurn:
 		sll	$t0, $t0, 2		# Multiply $t0 by 4 (each space on board = 1 word = 4 bytes)
 		lw	$t1, board($t0)		# Load the word at the base address plus offset ($t0)
 		bne	$t1, $zero, PTurn	# Restart prompt if column is full
+
+AI_start: # AI component reuses this part to fulfill a turn by the AI after a position has been determined
+
 PT_loop:
 		addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
-		
+
 #	TODO: check if bottom of column has been reached (!)
-		
-		lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0) 
+
+		lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
 		beq	$t2, $zero, PT_loop	# If the space is empty, move down again
 PT_up:
 		# Move back up a space on the board if the space isn't empty or the end of the column was reached
@@ -355,18 +358,18 @@ PT_set:
 		# Place the marker on the board and jump back to caller
 		sw	$a0, board($t0)		# Store indicator value ($t3) at the base address plus offset ($t0)
 		subi	$sp, $sp, 12		# Get space on stack
-		
+
 		# Store $ra and call CheckWin
 		sw	$ra, 0($sp)		# Store $ra on stack
 		move	$a1, $t0		# Argument for CheckWin (location on board)
 		move	$v1, $a1		# Argument for AITurn (location on board)
 		jal	CheckWin
-		
+
 		# Store $v0 and $a0 and call DrawBoard
 		sw	$v0, 4($sp)		# Store $v0 on stack
 		sw	$a0, 8($sp)		# Store $a0 on stack
 		jal	DrawBoard		# Draw the board
-		
+
 		# Reload registers and jump back to caller
 		lw	$a0, 8($sp)		# Load $a0 back from the stack
 		lw	$v0, 4($sp)		# Load $v0 back from the stack
@@ -374,90 +377,111 @@ PT_set:
 		addi	$sp, $sp, 12		# Remove space from stack
 		jr	$ra			# Jump back
 
-		
+
 # AITurn component
 #	Handles turns for the AI.
 AITurn:
-		
-		
+
+
 		# Get space on stack and store $ra
 		subi	$sp, $sp, 12
 		sw	$ra, 0($sp)
 		sw	$a0, 4($sp)
-		
+
 		li	$v0, 4
 		la	$a0, ai_turn
 		syscall				# Print AI turn message
-		
+
+		# Get the difficulty setting
 		la	$t0, diff_setting
-		lw	$t1, 0($t0)
-		beq	$t1, 1, AI_rand
-		beq	$t1, 2, AI_med
-		beq	$t1, 3, AI_strat
+		lw	$t1, 0($t0) #$t1 has the difficulty setting
+
+		beq	$t1, 1, AI_easy #if 1, go to AI_easy
+		beq	$t1, 2, AI_medium	# if 2, go to AI_medium
+		beq	$t1, 3, AI_hard # if 3, go to AI_hard
 		j	AI_error
-AI_next:
-		jal	CheckWin
-		sw	$v0, 8($sp)
-		jal	DrawBoard
-		j	AI_back
-AI_med:
-		# Generate random number to decide between random or strategic turn
-		li	$v0, 42
-		li	$a1, 100
-		syscall				# Generate random integer (in $a0)
-		li	$t0, 2
-		div	$a0, $t0
-		mfhi	$t1
-		
-		beq	$t1, 0, AI_rand		# If ($a0 % 2 == 0), branch to AI_rand
-		j	AI_strat		# Else, jump to AI_strat
-AI_rand:
-		# ??????? what do here
-AI_randLoop1:
-		li	$v0, 42
-		li	$a1, 6
-		syscall				# Generate random integer (in $a0)
-		sll	$a0, $a0, 2
-		lw	$t0, board($a0)
-		bne	$t0, 0, AI_randLoop1
-		
-		move	$t1, $a0
-		lw	$a0, 4($sp)
-		
-AI_randLoop2:
-		addi	$t1, $t1, 28		# Move down one row in the column (add 4 * 7)
-		lw	$t0, board($t1)		# Load the word at the base address plus offset ($t0) 
-		beq	$t0, 0, AI_randLoop2	# If the space is empty, move down again
-AI_randSet:
-		# Move back up a space on the board if the space isn't empty or the end of the column was reached
-		subi	$t1, $t1, 28		# Else, move back up one row (sub 4 * 7)
 
-		# Store word and jump back
-		sw	$a0, board($t1)
-		move	$a1, $t1		# Move address to $a1 (for CheckWin)
-		j	AI_next
-		
-AI_strat:
-		subi	$sp, $sp, 4
-		sw	$ra, 0($sp)
-		
-#		TODO: strategy code goes here
-		
-		lw	$ra, 0($sp)
-		addi	$sp, $sp, 4
-		j	AI_next
+easy:
+				# easy is completely random
+				li	$a1, 8			# get random number between 0 and 7
+				li	$v0, 42			# instruction for get random integer
+				syscall				# execute
 
-AI_error:
-		li	$v0, 4
-		la	$a0, error
-		syscall
-AI_back:
-		lw	$ra, 0($sp)
-		lw	$v0, 8($sp)
-		addi	$sp, $sp, 12
-		jr	$ra
-		
-		
+				# Get first item in column and check if it's 0 (empty)
+				move	$t0, $a0		# Set $t0 to $v0 (for calculations)
+				subi	$t0, $t0, 1		# Subtract 1 from $t0 (indices start at 0)
+				sll	$t0, $t0, 2		# Multiply $t0 by 4 (each space on board = 1 word = 4 bytes)
+				lw	$t1, board($t0)		# Load the word at the base address plus offset ($t0)
+				bne	$t1, $zero, easy	# Restart prompt if column is full
+
+				j	AI_start		# $a0 has the column
+
+medium:
+				# medium is mix of random and some strategy
+				# it will use winning strategy to determine the best spot to play
+				# then, it will use a random number between 0 and 2 to determine to play to the column on the left, right on the best column, or on the right to play
+				#jal	winning_strategy	# call winning strategy
+
+				# pick a random integer between 0 and 2
+				li	$a1, 3			# get random number between 0 and 2
+				li	$v0, 42			# instruction for get random integer
+				syscall				# execute
+				addi	$a0, $a0, -1		# if the random integer is 1, then the amount to increment the column number would be zero
+				jal AIStrat
+
+AIStrat:
+# the first check should be any horizontal best spots
+
+# first, check the first column of first row(bottom row)
+
+	la $s0, board		# $t0 has the address of board
+	addi $s0, $s0, 192	# $t0 has the address of the last word in board
+	li $s1, 4				# $t1 has the number of times to check groups of four in a row
+# for the size of a row
+	beqz $s1, next_row
+	addi $sp, $sp, -16
+	sw $s0, ($sp)
+	sw $zero, 4($sp)
+	sw $zero, 8($sp)
+	li $t0, 4
+	sw $t0, 12($sp)
+	jal		check4_horizontal				# jump tocheck4 and save position to $ra
+
+check4_horizontal:
+	lw $s0, ($sp)		# get the address of board
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $t0, ($s0)		# get the word
+	lw $t7, 12($sp)
+	addi $sp, $sp, 12	# close up the $sp
+	li $t1, 1				# used to check if 1
+	beq $t0, $t1, horizontal_1
+
+return_h1:
+	addi $t1, $t1, 1	# used to check if 2
+	beq $t0, $t1, horizontal_2
+
+return_h2:
+	bnez $t7, check4_horizontal		# if four items haven't been checked, loop to check4_horizontal
+
+
+horizontal_1:
+	addi $s1, $s1, 1
+	addi $t7, $t7, -1
+	j return_h1
+
+horizontal_2:
+	addi $s2, $s2, 1
+	addi $t7, $t7, -1
+	j return_h2
+
+	# checks the next four positions
+	# if there is a 4-gap with a empty space and 3 of any kind, return empty space as best spot
+	# else, if
+
+
+
+
 # CheckWin component
 #	Checks for wins on the board (horizontal, vertical, and diagonal).
 #	If a win is found, 1 is returned in $v0. Otherwise, 0 is returned in $v0.
@@ -465,7 +489,7 @@ AI_back:
 CheckWin:
 		subi	$sp, $sp, 4
 		sw	$ra, 0($sp)
-		
+
 		jal	Vertical
 		beq	$v0, 1, CW_win
 		jal	Horizontal
@@ -474,7 +498,7 @@ CheckWin:
 		beq	$v0, 1, CW_win
 		jal	DiagR
 		beq	$v0, 1, CW_win
-		
+
 		lw	$ra, 0($sp)
 		addi	$sp, $sp, 4
 		jr	$ra
@@ -528,13 +552,13 @@ H_loop3:
 		# Loop through row and count matches
 		addi	$s0, $s0, 1		# Increment counter
 		addi	$t0, $t0, 4		# Move forward one space
-		
+
 		# Branch to H_check if next row has been reached
 		li	$t1, 28
 		div	$t0, $t1
 		mfhi	$t2
 		beq	$t2, 0, H_check
-		
+
 		lw	$t3, board($t0)
 		bne	$t3, $a0, H_check	# If not a match, branch to H_check
 		j	H_loop3
@@ -549,24 +573,24 @@ DiagL:
 		# Check for win diagonally (\)
 		li	$s0, 0			# Set counter to 0
 		li	$v0, 0			# Set default return value
-		
+
 #	TODO: implement this
-		
+
 		jr	$ra
 DiagR:
 		# Check for win diagonally (/)
 		li	$s0, 0			# Set counter to 0
 		li	$v0, 0			# Set default return value
-		
+
 #	TODO: implement this
-		
+
 		jr	$ra
 CW_win:
 		# Load $ra back from the stack and jump to caller
 		lw	$ra, 0($sp)
 		addi	$sp, $sp, 4
 		jr	$ra
-	
+
 
 # Exit component
 #	Displays exit prompt and ends the program.
