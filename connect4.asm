@@ -378,6 +378,8 @@ PT_set:
 		jr	$ra			# Jump back
 
 
+
+
 # AITurn component
 #	Handles turns for the AI.
 AITurn:
@@ -429,56 +431,209 @@ medium:
 				addi	$a0, $a0, -1		# if the random integer is 1, then the amount to increment the column number would be zero
 				jal AIStrat
 
-AIStrat:
-# the first check should be any horizontal best spots
 
-# first, check the first column of first row(bottom row)
+set_row_numbers:
+	sw $ra, -4($sp)
 
-	la $s0, board		# $t0 has the address of board
-	addi $s0, $s0, 192	# $t0 has the address of the last word in board
-	li $s1, 4				# $t1 has the number of times to check groups of four in a row
-# for the size of a row
-	beqz $s1, next_row
-	addi $sp, $sp, -16
-	sw $s0, ($sp)
-	sw $zero, 4($sp)
-	sw $zero, 8($sp)
+# s0 = A
+	li $t0, 1
+	jal srn_loop
+	move $t0, $s0 # s0 has the top row number for A
+	sw $s0, -8($sp)
+# s1 = B
+	li $t0, 2
+	jal srn_loop
+	move $t0, $s1
+	sw $s1, -12($sp)
+# s2 = C
+  li $t0, 3
+	jal srn_loop
+	move $t0, $s2
+	sw $s2, -16($sp)
+# s3 = D
 	li $t0, 4
-	sw $t0, 12($sp)
-	jal		check4_horizontal				# jump tocheck4 and save position to $ra
+	jal srn_loop
+	move $t0, $s3
+	sw $s3, -20($sp)
+# s4 = E
+	li $t0, 5
+	jal srn_loop
+	move $t0, $s4
+	sw $s4, -24($sp)
+# s5 = F
+	li $t0, 6
+	jal srn_loop
+	move $t0, $s5
+	sw $s5, -28($sp)
+# s6 = G
+  li $t0, 7
+	jal srn_loop
+	move $t0, $s6
+	sw $s6, -32($sp)
 
-check4_horizontal:
-	lw $s0, ($sp)		# get the address of board
-	lw $s1, 4($sp)
-	lw $s2, 8($sp)
-	lw $t0, ($s0)		# get the word
-	lw $t7, 12($sp)
-	addi $sp, $sp, 12	# close up the $sp
-	li $t1, 1				# used to check if 1
-	beq $t0, $t1, horizontal_1
+	lw $ra, -4($sp)
+	jr $ra
 
-return_h1:
-	addi $t1, $t1, 1	# used to check if 2
-	beq $t0, $t1, horizontal_2
-
-return_h2:
-	bnez $t7, check4_horizontal		# if four items haven't been checked, loop to check4_horizontal
+srn_loop:
+				addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 
 
-horizontal_1:
-	addi $s1, $s1, 1
-	addi $t7, $t7, -1
-	j return_h1
+			  lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
+				beq	$t2, $zero, srn_loop	# If the space is empty, move down again
+srn_up:
+				# Move back up a space on the board if the space isn't empty or the end of the column was reached
+  			subi	$t0, $t0, 28		# Else, move back up one row (sub 4 * 7)
 
-horizontal_2:
-	addi $s2, $s2, 1
-	addi $t7, $t7, -1
-	j return_h2
+				jr $ra
 
-	# checks the next four positions
-	# if there is a 4-gap with a empty space and 3 of any kind, return empty space as best spot
-	# else, if
+AIStrat:
+	# Start with horizontal check
+	# t0 = current row
+	# t1 = first piece
+	# t2 = second piece
+	# t3 = third piece
+	# t4 = fourth piece
+	# t8 = column counter
+		li $t8, 1
 
+AIS_horizontal:
+	# check t0 (t0 tells us which row to begin the horizontal row check)
+	# use t0 to load the appropriate row of the board
+	# t12 will be used temporarily to achieve this
+		li $t12, 28
+		li $t11, 7
+		sub $t10, $t11, $t0
+		mult	$t10, $t12			# t1$0 *t1$2 Hi and Lo registers
+		mflo	$t10					# copyt$10 to
+
+
+	# start with column A
+	# t5 will be used temporarily to hold the address of the board specific location
+	# t6 will be used temporarily to hold the address of 'board'
+		la $t6, board
+
+	# add the whatever offset we need
+		add $t6, $t6, $t10
+		# t10 can be used by other functions
+		# t12 can be used
+		add $t7, $t6, 28	# t7 will help determine if next row has been reached
+		move $s7, $t6			# s7 will be used to tell if it's beginning of row
+		addi $s7, $s7, 16
+
+AIS_hor_check:
+	# load the next words into t1, t2, t3, t4
+		lw $t1, ($t6)
+		addi $t6, $t6, 4
+		lw $t2, ($t6)
+		addi $t6, $t6, 4
+		lw $t3, ($t6)
+		addi $t6, $t6, 4
+		lw $t4, ($t6)
+		addi $t6, $t6, 4
+
+	# perform check to see if end of row
+		beq $t6, $t7, end_AIS_row	# if t6 == t7, end of row has been reached, branch to end_AIS_row
+		jal check4_horizontal			# else, jump and link to check4_horizontal
+
+check4_horizontal:	# the fun begins
+	# check for beginning of row
+		beq		$s7, $t6, skip_this_step	# if  s7 == t6, don't do the next step
+	# check for two of the same kind and no other pieces
+	# first, check if each are top of the column
+	# reset t6 to 4 spaces back
+	addi $t6, $t6, -16
+	# if each position is not top of the column, then go to skip_this_step
+	# t8 held the first item's column number. multiply this by 4 and subtract from 4
+		#sll $t9, $t8, 2
+		#addi $t9, $t9, 4
+		#sub $sp, $sp, $t9
+
+	li $s2, 4 # this will serve as counter for top_of_column_loop
+	li $t9, 192 # this will be used for checking out of bounds
+
+top_of_column_loop: # loop to check each piece read position matches top of column position
+	beqz $s2, exit_toc_loop
+	# now, the stack pointer is pointing at the desired spot, load the next four words (should be the top position of each of the desired columns)
+	# lw $s1, ($sp) # this should have the position of the top of the column
+	# addi $sp, $sp, -4 # get the next top of column value
+	# bne $t6, $s1, skip_this_step # should any of these top of column positions not match the position on the board of the piece read, skip this step
+
+	addi $t6, $t6, 28
+	bgt $t6, $t9, reset_for_toc_loop
+	lw $t10, ($t6) # load the contents of the address pointed to
+	beqz $t10, skip_this_step # if the next element in the same column equals zero, skip this step
+	addi $t6, $t6, 4 # get the next piece read position
+	addi $s2, $s2, -1 # counter--
+	j top_of_column_loop
+
+reset_for_toc_loop:
+	addi $t6, $t6, -28
+	# each piece should be on the same row, if one of these positions plus 28 exceeded the bounds, then this must be true for all the pieces
+	# therefore, exit
+
+exit_toc_loop:
+	# t10 can be used freely
+	# t9 can be used freely
+	# s2 can be used freely
+
+
+
+# if this point reached, then each of the four pieces are at the top of the column
+# now, it's time to check whether there are three of the same kind
+	li $t9, 1
+three_of_same_horizontal:
+	# check t1 == t2
+	beq $t1, $t2, tosh_t1_t2
+	# else, check t1 == t3
+	beq $t1, $t3, tosh_t1_t3
+	# else, check t2 == t3
+	beq $t2, $t3, tosh_t2_t3
+
+tosh_t1_t2:
+	# if t2 == t3
+	beq $t2, $t3, tosh_t1_t2_checkt4
+	# else check t2 == t4
+	beq $t2, $t4, tosh_t1_t4_checkt3
+	# else branch to vertical check
+	j tosh_nope
+
+tosh_t1_t3:
+	# if t3 == t4
+	beq $t3, $t4, tosh_t1_t3_checkt2
+	# else, jump to vertical check
+	j tosh_nope
+
+tosh_t2_t3:
+	# if t3 == t4
+	beq $t3, $t4, tosh_t2_t3_checkt1
+	# else, jump to vertical check
+	j tosh_nope
+
+tosh_t1_t2_checkt4:
+	# if t4 == zero, then t4 is best spot
+	beqz $t4, return_t4
+	# else, jump to exit
+	j tosh_nope
+
+tosh_t1_t4_checkt3:
+	# if t3 == zero, then t3 is best spot
+	beqz $t3, return_t3
+	# else, jump to exit
+	j tosh_nope
+
+tosh_t1_t3_checkt2:
+	# if t2 == zero, then t2 is best spot
+	beqz $t2, return_t2
+	# else, jump to exit
+	j tosh_nope
+
+tosh_t2_t3_checkt1:
+	# if t1 == zero, then t1 is best spot
+	beqz $t1, return_t1
+	# else, jump to exit
+	j tosh_nope
+
+skip_this_step:
 
 
 
