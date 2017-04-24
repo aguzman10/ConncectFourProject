@@ -433,45 +433,36 @@ medium:
 
 
 set_row_numbers:
-	sw $ra, -4($sp)
 
 # s0 = A
 	li $t0, 1
 	jal srn_loop
 	move $t0, $s0 # s0 has the top row number for A
-	sw $s0, -8($sp)
 # s1 = B
 	li $t0, 2
 	jal srn_loop
 	move $t0, $s1
-	sw $s1, -12($sp)
 # s2 = C
   li $t0, 3
 	jal srn_loop
 	move $t0, $s2
-	sw $s2, -16($sp)
 # s3 = D
 	li $t0, 4
 	jal srn_loop
 	move $t0, $s3
-	sw $s3, -20($sp)
 # s4 = E
 	li $t0, 5
 	jal srn_loop
 	move $t0, $s4
-	sw $s4, -24($sp)
 # s5 = F
 	li $t0, 6
 	jal srn_loop
 	move $t0, $s5
-	sw $s5, -28($sp)
 # s6 = G
   li $t0, 7
 	jal srn_loop
 	move $t0, $s6
-	sw $s6, -32($sp)
 
-	lw $ra, -4($sp)
 	jr $ra
 
 srn_loop:
@@ -487,154 +478,134 @@ srn_up:
 				jr $ra
 
 AIStrat:
-	# Start with horizontal check
 	# t0 = current row
 	# t1 = first piece
 	# t2 = second piece
 	# t3 = third piece
 	# t4 = fourth piece
-	# t8 = column counter
-		li $t8, 1
+		li $t8, 1 # used as is
 
-AIS_horizontal:
-	# check t0 (t0 tells us which row to begin the horizontal row check)
-	# use t0 to load the appropriate row of the board
-	# t12 will be used temporarily to achieve this
-		li $t12, 28
-		li $t11, 7
-		sub $t10, $t11, $t0
-		mult	$t10, $t12			# t1$0 *t1$2 Hi and Lo registers
-		mflo	$t10					# copyt$10 to
+	# using $t9 as a flag to check if immediate or not
+		move $t9, $zero
+
+	# using $t10 as a flag as well
+		move $t10, $zero
+AIS_Loop:
+	# make a call to set_row_numbers
+	jal set_row_numbers
+
+# Use checkwin and find best spot.
+# place a piece in each column, starting with A
+# checkwin returns 1 in v0 if win found
+
+	# load address of board
+	la $t1, board
+
+	# drop a piece in column A
+	subi $t1, $t1, 28 # get the postion of top of column A
+	beq $s0, $t1, skip_A # if top of column A has been reached, move on
+	# else, this means that column A can have at least one more piece
+	move $a1, $s0
+	jal AI_Win_Check
+
+skip_A:
+	addi $t1, $t1, 4 # get the position of top of column B
+	beq $s1, $t1, skip_B # if top of B, move on
+	# else, this means that column B can have at least one more piece
+	move $a1, $s1
+	jal AI_Win_Check
+
+skip_B:
+	addi $t1, $t1, 4 # get teh position of top of column C
+	beq $s2, $t1, skip_C # if top of C, move on
+	move $a1, $s2
+	jal AI_Win_Check
+
+skip_C:
+	addi $t1, $t1, 4 # get the position of top of column D
+	beq $s3, $t1, skip_D	# if top of D, move on
+	move $a1, $s3
+	jal AI_Win_Check
+
+skip_D:
+	addi $t1, $t1, 4 # get the position of top of column E
+	beq $s4, $t1, skip_E # if tope of E, move on
+	move $a1, $s3
+	jal AI_Win_Check
+
+skip_E:
+	addi $t1, $t1, 4 # get the position of top of column F
+	beq $s5, $t1, skip_F # if top of F, move on
+	move $a1, $s4
+	jal AI_Win_Check
+
+skip_F:
+	addi $t1, $t1, 4 # get the position of top of column F
+	beq $s6, $t1, skip_G # if top of G, move on
+	move $a1, $s5
+	jal AI_Win_Check
+
+skip_G:
+	# nothing is good
+	jr $ra
+	# end AIS_Loop
+
+best_spot:
+	jal ADL_Delete
+	jr $ra
+
+AI_Win_Check:
+# drop a piece and check win
+# first, drop an AI piece
+li $a0, 2
+jal AI_Drop_Loop
+jal CheckWin
+
+# check if AI wins
+beq $v0, $t8, found_it
+jal AWC_second
+jal ADL_Delete
 
 
-	# start with column A
-	# t5 will be used temporarily to hold the address of the board specific location
-	# t6 will be used temporarily to hold the address of 'board'
-		la $t6, board
+# second, drop a user piece
+li $a0, 1
+jal AI_Drop_Loop
+jal CheckWin
 
-	# add the whatever offset we need
-		add $t6, $t6, $t10
-		# t10 can be used by other functions
-		# t12 can be used
-		add $t7, $t6, 28	# t7 will help determine if next row has been reached
-		move $s7, $t6			# s7 will be used to tell if it's beginning of row
-		addi $s7, $s7, 16
+# check if player wins
+beq $v0, $t8, found_it
 
-AIS_hor_check:
-	# load the next words into t1, t2, t3, t4
-		lw $t1, ($t6)
-		addi $t6, $t6, 4
-		lw $t2, ($t6)
-		addi $t6, $t6, 4
-		lw $t3, ($t6)
-		addi $t6, $t6, 4
-		lw $t4, ($t6)
-		addi $t6, $t6, 4
+# else if first time, store the current a1 into stack and try again
+# first, check if this has happened yet
+bnez $t9, easy # just choose a random spot if not first time
+addi $sp, $sp, -4
+sw $a0, ($sp)
+addi $sp, $sp, 4
+addi $t9, $t9, 1
 
-	# perform check to see if end of row
-		beq $t6, $t7, end_AIS_row	# if t6 == t7, end of row has been reached, branch to end_AIS_row
-		jal check4_horizontal			# else, jump and link to check4_horizontal
 
-check4_horizontal:	# the fun begins
-	# check for beginning of row
-		beq		$s7, $t6, skip_this_step	# if  s7 == t6, don't do the next step
-	# check for two of the same kind and no other pieces
-	# first, check if each are top of the column
-	# reset t6 to 4 spaces back
-	addi $t6, $t6, -16
-	# if each position is not top of the column, then go to skip_this_step
-	# t8 held the first item's column number. multiply this by 4 and subtract from 4
-		#sll $t9, $t8, 2
-		#addi $t9, $t9, 4
-		#sub $sp, $sp, $t9
+j
 
-	li $s2, 4 # this will serve as counter for top_of_column_loop
-	li $t9, 192 # this will be used for checking out of bounds
-
-top_of_column_loop: # loop to check each piece read position matches top of column position
-	beqz $s2, exit_toc_loop
-	# now, the stack pointer is pointing at the desired spot, load the next four words (should be the top position of each of the desired columns)
-	# lw $s1, ($sp) # this should have the position of the top of the column
-	# addi $sp, $sp, -4 # get the next top of column value
-	# bne $t6, $s1, skip_this_step # should any of these top of column positions not match the position on the board of the piece read, skip this step
-
-	addi $t6, $t6, 28
-	bgt $t6, $t9, reset_for_toc_loop
-	lw $t10, ($t6) # load the contents of the address pointed to
-	beqz $t10, skip_this_step # if the next element in the same column equals zero, skip this step
-	addi $t6, $t6, 4 # get the next piece read position
-	addi $s2, $s2, -1 # counter--
-	j top_of_column_loop
-
-reset_for_toc_loop:
-	addi $t6, $t6, -28
-	# each piece should be on the same row, if one of these positions plus 28 exceeded the bounds, then this must be true for all the pieces
-	# therefore, exit
-
-exit_toc_loop:
-	# t10 can be used freely
-	# t9 can be used freely
-	# s2 can be used freely
+found_it:
+	beqz $t9, best_spot
+	addi $sp, $sp, -4
+	lw $a0, ($sp)
+	addi $sp, $sp, 4
+	j best_spot
 
 
 
-# if this point reached, then each of the four pieces are at the top of the column
-# now, it's time to check whether there are three of the same kind
-	li $t9, 1
-three_of_same_horizontal:
-	# check t1 == t2
-	beq $t1, $t2, tosh_t1_t2
-	# else, check t1 == t3
-	beq $t1, $t3, tosh_t1_t3
-	# else, check t2 == t3
-	beq $t2, $t3, tosh_t2_t3
+AI_Drop_Loop:
 
-tosh_t1_t2:
-	# if t2 == t3
-	beq $t2, $t3, tosh_t1_t2_checkt4
-	# else check t2 == t4
-	beq $t2, $t4, tosh_t1_t4_checkt3
-	# else branch to vertical check
-	j tosh_nope
+		# Place the marker on the board and jump back to caller
+		sw	$a0, ($a1)		# Store indicator value ($t3) at the base address plus offset ($t0)
+		jr $ra
+		# end AI_Drop_Loop
 
-tosh_t1_t3:
-	# if t3 == t4
-	beq $t3, $t4, tosh_t1_t3_checkt2
-	# else, jump to vertical check
-	j tosh_nope
-
-tosh_t2_t3:
-	# if t3 == t4
-	beq $t3, $t4, tosh_t2_t3_checkt1
-	# else, jump to vertical check
-	j tosh_nope
-
-tosh_t1_t2_checkt4:
-	# if t4 == zero, then t4 is best spot
-	beqz $t4, return_t4
-	# else, jump to exit
-	j tosh_nope
-
-tosh_t1_t4_checkt3:
-	# if t3 == zero, then t3 is best spot
-	beqz $t3, return_t3
-	# else, jump to exit
-	j tosh_nope
-
-tosh_t1_t3_checkt2:
-	# if t2 == zero, then t2 is best spot
-	beqz $t2, return_t2
-	# else, jump to exit
-	j tosh_nope
-
-tosh_t2_t3_checkt1:
-	# if t1 == zero, then t1 is best spot
-	beqz $t1, return_t1
-	# else, jump to exit
-	j tosh_nope
-
-skip_this_step:
-
+ADL_Delete:
+		sw $0, ($a1)
+		jr $ra
+		# end ADL_Delete
 
 
 # CheckWin component
