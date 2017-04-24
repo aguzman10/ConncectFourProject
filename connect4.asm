@@ -37,11 +37,19 @@ row_end:	.asciiz "|\n"
 title:		.asciiz	"\n===== Connect-Four =====\n"
 turn:		.asciiz "\nChoose column to drop piece: "
 
+<<<<<<< HEAD
+=======
+invalid_input:	.asciiz	"\nInvalid selection."
+column_full:	.asciiz	"\nColumn full."
+ranks: .space 28
+		
+>>>>>>> origin/master
 		.text
 # Entry point
-		li	$v0, 4
-		la	$a0, title
-		syscall				# Print title
+		#li	$v0, 4
+		#la	$a0, title
+		#syscall				# Print title
+		jal	TITLE
 
 # Menu component
 #	Displays options to the user and jumps to the appropriate
@@ -81,9 +89,10 @@ M_ins:
 PvE:
 		subi	$sp, $sp, 4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stack
+		jal	DRAWBOARD
 		jal	PvE_dPrompt
 		jal	MakeBoard		# Jump and link to MakeBoard (zero the board)
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
+		#jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
 		j	PvE_loop
 PvE_dPrompt:
 		li	$v0, 4
@@ -97,11 +106,13 @@ PvE_dPrompt:
 PvE_loop:
 		# Loop between turns for player and AI
 		li	$a0, 1
+		li	$a1, 0x00ff0000
 		jal	PTurn			# Jump and link to PTurn (player turn)
 		beq	$v0, 1, PvE_win		# If win, branch to PvE_win
 		li	$a0, 2
+		li	$a1, 0x0000ff00
 		jal	AITurn			# Jump and link to AITurn (AI turn)
-		beq	$v0, 1, PvE_win		# If win, branch to PvE_win
+		#beq	$v0, 1, PvE_win		# If win, branch to PvE_win
 		j PvE_loop			# Else, loop again
 PvE_win:
 		# Branch to appropriate win-subroutine
@@ -136,22 +147,26 @@ PvE_back:
 PvP:
 		subi	$sp, $sp, 4		# Get space for $ra on the stack
 		sw	$ra, 0($sp)		# Store $ra to the stack
+		jal	DRAWBOARD
 		jal	MakeBoard
-		jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
+		#jal	DrawBoard		# Jump and link to DrawBoard (draw the board)
 PvP_loop:
 		# Loop between turns for players
 		li	$v0, 4
 		la	$a0, p1_turn
 		syscall				# Print p1_turn
 		li	$a0, 1			# Set indicator ($a0) to 1
+		li	$a1, 0x00ff0000
 		jal	PTurn			# Jump and link to PTurn (player turn) for P1
-		beq	$v0, 1, PvP_win		# If win, branch to PvP_win
+		#beq	$v0, 1, PvP_win		# If win, branch to PvP_win
+		
 		li	$v0, 4
 		la	$a0, p2_turn
 		syscall				# Print p2_turn
 		li	$a0, 2			# Set indicator ($a0) to 2
+		li	$a1, 0x000000ff
 		jal	PTurn			# Jump and link to PTurn (player turn) for P2
-		beq	$v0, 1, PvP_win		# If win, branch to PvP_win
+		#beq	$v0, 1, PvP_win		# If win, branch to PvP_win
 		j PvP_loop
 PvP_win:
 		# Branch to appropriate win-subroutine
@@ -201,7 +216,7 @@ MB_loop1:
 		beq	$t0, 168, MB_loop2	# Stop if end of board has been reached
 		sw	$zero, board($t0)	# Store 0 at the base address plus the offset ($t0)
 		addi	$t0, $t0, 4		# $t0 += 4
-		j	MB_loop1			# Jump to start of loop
+		j	MB_loop1		# Jump to start of loop
 MB_loop2:
 		beq	$t0, 196, MB_stop	# Stop if end of board has been reached
 		li	$t1, 3
@@ -210,6 +225,7 @@ MB_loop2:
 		j	MB_loop2		# Jump to start of loop
 MB_stop:
 		jr	$ra			# Jump back to caller
+<<<<<<< HEAD
 
 
 # DrawBoard component
@@ -304,21 +320,37 @@ DB_back:
 		jr	$ra
 #	TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
 
+=======
+		
+>>>>>>> origin/master
 
 # PlayerTurn component
 #	Handles turns for players. Asks the player to choose a column to
 #	drop a piece, then (if the column is empty and the column is within
 #	bounds) drops a piece to the lowest empty slot in the column.
+#	Arguments:
+#		$a0 - the value to store to the board array
+#		$a1 - the color to draw to the bitmap display
 PTurn:
+<<<<<<< HEAD
 		# Store #a0 (indicator) on the stack
 		subi	$sp, $sp, 4		# Get space on stack for $a0
 		sw	$a0, 0($sp)		# Store $a0 on the stack
 
 		# User selects column
+=======
+
+		# Prompt user to select column and get user input
+		move	$s0, $a0
+		move	$s1, $a1
+		
+		# Print turn message
+>>>>>>> origin/master
 		li	$v0, 4
 		la	$a0, turn
-		syscall				# Print turn prompt
+		syscall
 		li	$v0, 5
+<<<<<<< HEAD
 		syscall				# Get input from user
 
 		# Restore $a0 from the stack
@@ -326,9 +358,14 @@ PTurn:
 		addi	$sp, $sp, 4		# Remove space for $a0 from stack
 
 		# Check bounds for column selection
+=======
+		syscall
+		# Check bounds of user input
+>>>>>>> origin/master
 		slti	$t0, $v0, 1
-		beq	$t0, 1, PTurn		# Restart prompt if input < 1
+		beq	$t0, 1, PT_invalid
 		slti	$t0, $v0, 8
+<<<<<<< HEAD
 		beq	$t0, $zero, PTurn	# Restart prompt if input > 7
 
 #	TODO: display error messages to user for invalid input (!)
@@ -376,13 +413,55 @@ PT_set:
 		lw	$ra, 0($sp)		# Load $ra back from the stack
 		addi	$sp, $sp, 12		# Remove space from stack
 		jr	$ra			# Jump back
+=======
+		beq	$t0, $zero, PT_invalid
+
+		# Check if column is empty
+		subi	$t0, $v0, 1
+		sll	$t0, $t0, 2
+		lw	$t1, board($t0)
+		bne	$t1, $zero, PT_full
+		
+		# Store marker and check win
+		subi	$sp, $sp, 4
+		sw	$ra, 0($sp)
+		move	$a0, $t0
+		move	$a1, $s1
+		jal	LowestDraw
+		lw	$ra, 0($sp)
+		addi	$sp, $sp, 4
+		sw	$s0, board($v0)
+		# CHECK WIN
+		jr	$ra
+PT_full:
+		# Print column full message
+		la	$a0, column_full
+		li	$v0, 4
+		syscall
+		j	PTurn
+PT_invalid:
+		# Print invalid input message
+		la	$a0, invalid_input
+		li	$v0, 4
+		syscall
+		j	PTurn
+
+
+
+
+
+>>>>>>> origin/master
 
 
 
 
 # AITurn component
 #	Handles turns for the AI.
+#	Arguments:
+#		$a0 - the value to store to the board array
+#		$a1 - the RGB value to draw to the display
 AITurn:
+<<<<<<< HEAD
 
 
 		# Get space on stack and store $ra
@@ -608,6 +687,215 @@ ADL_Delete:
 		# end ADL_Delete
 
 
+=======
+		# Store return address and arguments to the stack
+		#subi	$sp, $sp, 12
+		#sw	$ra, 0($sp)
+		#sw	$a0, 4($sp)
+		#sw	$a1, 8($sp)
+		
+		move	$t0, $a0
+		# Print AI message
+		li	$v0, 4
+		la	$a0, ai_turn
+		syscall
+		move	$a0, $t0
+		
+		# Load difficulty setting into branch accordingly
+		#la	$t0, diff_setting
+		#lw	$t1, 0($t0)
+		#beq	$t1, 1, AI_rand
+		#beq	$t1, 2, AI_med
+		#beq	$t1, 3, AI_strat
+		#j	AI_error
+		
+		j	AI_strat
+		
+AI_strat:
+		subi	$sp, $sp, 12
+		sw	$ra, 0($sp)
+		sw	$a0, 4($sp)
+		sw	$a1, 8($sp)
+		jal	Minimax
+		move	$a0, $v0
+		lw	$a1, 8($sp)
+		jal	LowestDraw
+		lw	$ra, 0($sp)
+		lw	$a0, 4($sp)
+		addi	$sp, $sp, 12
+		sw	$a0, board($v0)
+		jr	$ra
+
+
+
+
+
+
+AI_error:
+		li	$v0, 4
+		la	$a0, error
+		syscall
+		j	Exit
+		
+AI_back:
+		jr	$ra
+		
+		
+		
+		
+# Minimax
+#	$a0 - marker for AI
+#	$v0 - column to drop a piece in
+Minimax:
+	li	$s0, 0			# choice = 0
+	li	$s1, 0			# c
+	move	$s2, $a0		# marker
+Minimax1:
+	beq	$s1, 28, OUTOFBOUNDS	# CHANGE 28
+	lw	$t0, board($s1)
+	addi	$s1, $s1, 4
+	bne	$t0, $0, Minimax1	# if (c.isFull())
+	subi	$s1, $s1, 4
+	
+	subi	$sp, $sp, 16
+	sw	$ra, 0($sp)
+	sw	$s0, 4($sp)
+	sw	$s1, 8($sp)
+	sw	$s2, 12($sp)
+	move	$a0, $s1
+	jal	Lowest			# idex i = getLowest()
+	move	$s6, $v0
+	#lw	$s1, 8($sp)
+	#lw	$s2, 12($sp)
+	li	$t0, 2
+	sw	$t0, board($s6)		# // store value
+	# NOTE: $a0 = address, $a1 = marker
+	move	$a1, $v0
+	lw	$a0, 12($sp)
+	jal	CheckWin		# int retVal = checkWin(player)
+	lw	$ra, 0($sp)
+	lw	$s0, 4($sp)
+	lw	$s1, 8($sp)
+	lw	$s2, 12($sp)
+	addi	$sp, $sp, 16
+	
+	beq	$v0, 1, BREAK1		# if (retVal == 1)
+
+	li	$s3, 0			# d
+Minimax2:
+	beq	$s3, 28, Minimax3	# CHANGE 28
+	lw	$t0, board($s3)
+	addi	$s3, $s3, 4
+	bne	$t0, $0, Minimax2	# if (d.isFull())
+	subi	$s3, $s3, 4
+	
+	subi	$sp, $sp, 20
+	sw	$ra, 0($sp)
+	sw	$s0, 4($sp)
+	sw	$s1, 8($sp)
+	sw	$s2, 12($sp)
+	sw	$s3, 16($sp)
+	move	$a0, $s3
+	jal	Lowest			# index j = getLowest()
+	move	$s7, $v0
+	#lw	$s2, 12($sp)
+	#lw	$s3, 16($sp)
+	li	$t0, 1
+	sw	$t0, board($s7)		# // store value
+	move	$a1, $v0
+	lw	$a0, 12($sp)
+	jal	CheckWin		# int retVal2 = checkWin(opponent)
+	lw	$ra, 0($sp)
+	lw	$s0, 4($sp)
+	lw	$s1, 8($sp)
+	lw	$s2, 12($sp)
+	lw	$s3, 16($sp)
+	addi	$sp, $sp, 20
+	sw	$0, board($s6)
+	sw	$0, board($s7)
+
+	beq	$v0, 1, BREAK2		# if (retVal2 == 1)
+	
+	addi	$s3, $s3, 4
+	j	Minimax2
+Minimax3:
+	addi	$s1, $s1, 4
+	j	Minimax1
+BREAK2:
+	addi	$s0, $s0, 4		# choice++
+	addi	$s1, $s1, 4		# c++
+	j	Minimax1
+BREAK1:
+	move	$v0, $s0
+	jr	$ra
+
+OUTOFBOUNDS:
+	li	$s0, 0			# choice = 0
+OUTOFBOUNDS1:
+	beq	$s0, 28, Exit
+	lw	$t0, board($s0)
+	addi	$s0, $s0, 4
+	bne	$t0, 0, OUTOFBOUNDS1
+	subi	$s0, $s0, 4
+	#subi	$sp, $sp, 12
+	#sw	$ra, 0($sp)
+	#sw	$s0, 4($sp)
+	#sw	$s2, 8($sp)
+	#move 	$a0, $s0
+	#jal	Lowest
+	#lw	$ra, 0($sp)
+	#lw	$s2, 8($sp)
+	#sw	$s2, board($v0)
+	move	$v0, $s0
+	jr	$ra
+		
+	
+		
+# Finds the lowest empty row in the given column
+#	$a0 - column address
+Lowest:
+	move	$t0, $a0
+Lowest1:
+	addi	$t0, $t0, 28
+	lw	$t1, board($t0)
+	beq	$t1, $0, Lowest1
+	subi	$t0, $t0, 28
+	move	$v0, $t0
+	jr	$ra	
+		
+		
+# Finds the lowest empty row in the given column
+# and draws to the bitmap display
+#	$a0 - column address
+#	#a1 - RGB value
+LowestDraw:
+	move	$t0, $a0
+	move	$t4, $a1
+	sll	$t1, $t0, 1
+	addi	$t2, $t1, 420
+	lw	$t3, 0xffff0000($t2)
+	sw	$t4, 0xffff0000($t2)
+LowestDraw1:
+	li	$a0, 35
+	li	$v0, 32
+	syscall
+	addi	$t0, $t0, 28
+	sw	$t3, 0xffff0000($t2)
+	addi	$t2, $t2, 256
+	lw	$t3, 0xffff0000($t2)
+	sw	$t4, 0xffff0000($t2)
+	lw	$t1, board($t0)
+	beq	$t1, $0, LowestDraw1
+	subi	$t0, $t0, 28
+	sw	$t3, 0xffff0000($t2)
+	subi	$t2, $t2, 256
+	sw	$t4, 0xffff0000($t2)
+	move	$v0, $t0
+	jr	$ra
+		
+		
+		
+>>>>>>> origin/master
 # CheckWin component
 #	Checks for wins on the board (horizontal, vertical, and diagonal).
 #	If a win is found, 1 is returned in $v0. Otherwise, 0 is returned in $v0.
@@ -632,7 +920,7 @@ Vertical:
 		# Check for win vertically
 		li	$s0, 0			# Set counter to 0
 		li	$v0, 0			# Set default return value
-		move	$t0, $a1		# $t0 = $a1 (for calculations)
+		move	$t0, $a1		# $t0 = $a0 (for calculations)
 V_loop1:
 		# Find uppermost matching marker in column
 		subi	$t0, $t0, 28		# Move up one row
@@ -717,6 +1005,1474 @@ CW_win:
 		addi	$sp, $sp, 4
 		jr	$ra
 
+<<<<<<< HEAD
+=======
+
+TITLE:
+		li $t0, 0x000000ff
+		li $t1, 0
+TLoop1:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 132, TLoop1
+
+		li $t0, 0x00ffffff
+		li $t1, 132
+TLoop2:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 252, TLoop2
+
+		li $t0, 0x000000ff
+		li $t1, 252
+TLoop3:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 260, TLoop3
+
+		li $t0, 0x00ffffff
+		li $t1, 260
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 264
+TLoop4:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 276, TLoop4
+
+		li $t0, 0x00ffffff
+		li $t1, 276
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 280
+TLoop5:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 292, TLoop5
+
+		li $t0, 0x00ffffff
+		li $t1, 292
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 296
+TLoop6:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 304, TLoop6
+
+		li $t0, 0x00ffffff
+		li $t1, 304
+TLoop7:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 312, TLoop7
+
+		li $t0, 0x00f0f000
+		li $t1, 312
+TLoop8:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 320, TLoop8
+
+		li $t0, 0x00ffffff
+		li $t1, 320
+TLoop9:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 328, TLoop9
+
+		li $t0, 0x00f0f000
+		li $t1, 328
+TLoop10:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 340, TLoop10
+
+		li $t0, 0x00ffffff
+		li $t1, 340
+TLoop11:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 348, TLoop11
+
+		li $t0, 0x00f0f000
+		li $t1, 348
+TLoop12:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 360, TLoop12
+
+		li $t0, 0x00ffffff
+		li $t1, 360
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 364
+TLoop13:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 376, TLoop13
+
+		li $t0, 0x00ffffff
+		li $t1, 376
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x000000ff
+		li $t1, 380
+TLoop14:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 388, TLoop14
+
+		li $t0, 0x00ffffff
+		li $t1, 388
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 392
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 396
+TLoop15:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 408, TLoop15
+
+		li $t0, 0x00f0f000
+		li $t1, 408
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 412
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 416
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 420
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 424
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 428
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 432
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 436
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 440
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 444
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 448
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 452
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 456
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 460
+TLoop16:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 476, TLoop16
+
+		li $t0, 0x00f0f000
+		li $t1, 476
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 480
+TLoop17:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 496, TLoop17
+
+		li $t0, 0x00f0f000
+		li $t1, 496
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 500
+TLoop18:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 508, TLoop18
+
+		li $t0, 0x000000ff
+		li $t1, 508
+TLoop19:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 516, TLoop19
+
+		li $t0, 0x00ffffff
+		li $t1, 516
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 520
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 524
+TLoop20:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 536, TLoop20
+
+		li $t0, 0x00f0f000
+		li $t1, 536
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 540
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 544
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 548
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 552
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 556
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 560
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 564
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 568
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 572
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 576
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 580
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 584
+TLoop21:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 596, TLoop21
+
+		li $t0, 0x00ffffff
+		li $t1, 596
+TLoop22:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 604, TLoop22
+
+		li $t0, 0x00f0f000
+		li $t1, 604
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 608
+TLoop23:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 624, TLoop23
+
+		li $t0, 0x00f0f000
+		li $t1, 624
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 628
+TLoop24:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 636, TLoop24
+
+		li $t0, 0x000000ff
+		li $t1, 636
+TLoop25:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 644, TLoop25
+
+		li $t0, 0x00ffffff
+		li $t1, 644
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 648
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 652
+TLoop26:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 664, TLoop26
+
+		li $t0, 0x00f0f000
+		li $t1, 664
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 668
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 672
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 676
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 680
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 684
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 688
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 692
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 696
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 700
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 704
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 708
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 712
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 716
+TLoop27:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 732, TLoop27
+
+		li $t0, 0x00f0f000
+		li $t1, 732
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 736
+TLoop28:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 752, TLoop28
+
+		li $t0, 0x00f0f000
+		li $t1, 752
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 756
+TLoop29:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 764, TLoop29
+
+		li $t0, 0x000000ff
+		li $t1, 764
+TLoop30:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 772, TLoop30
+
+		li $t0, 0x00ffffff
+		li $t1, 772
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 776
+TLoop31:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 788, TLoop31
+
+		li $t0, 0x00ffffff
+		li $t1, 788
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 792
+TLoop32:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 804, TLoop32
+
+		li $t0, 0x00ffffff
+		li $t1, 804
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 808
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 812
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 816
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 820
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 824
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 828
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 832
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 836
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 840
+TLoop33:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 852, TLoop33
+
+		li $t0, 0x00ffffff
+		li $t1, 852
+TLoop34:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 860, TLoop34
+
+		li $t0, 0x00f0f000
+		li $t1, 860
+TLoop35:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 872, TLoop35
+
+		li $t0, 0x00ffffff
+		li $t1, 872
+TLoop36:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 880, TLoop36
+
+		li $t0, 0x00f0f000
+		li $t1, 880
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 884
+TLoop37:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 892, TLoop37
+
+		li $t0, 0x000000ff
+		li $t1, 892
+TLoop38:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 900, TLoop38
+
+		li $t0, 0x00ffffff
+		li $t1, 900
+TLoop39:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1020, TLoop39
+
+		li $t0, 0x000000ff
+		li $t1, 1020
+TLoop40:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1028, TLoop40
+
+		li $t0, 0x00ffffff
+		li $t1, 1028
+TLoop41:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1080, TLoop41
+
+		li $t0, 0x00ff0000
+		li $t1, 1080
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1084
+TLoop42:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1092, TLoop42
+
+		li $t0, 0x00ff0000
+		li $t1, 1092
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1096
+TLoop43:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1148, TLoop43
+
+		li $t0, 0x000000ff
+		li $t1, 1148
+TLoop44:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1156, TLoop44
+
+		li $t0, 0x00ffffff
+		li $t1, 1156
+TLoop45:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1208, TLoop45
+
+		li $t0, 0x00ff0000
+		li $t1, 1208
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1212
+TLoop46:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1220, TLoop46
+
+		li $t0, 0x00ff0000
+		li $t1, 1220
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1224
+TLoop47:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1276, TLoop47
+
+		li $t0, 0x000000ff
+		li $t1, 1276
+TLoop48:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1284, TLoop48
+
+		li $t0, 0x00ffffff
+		li $t1, 1284
+TLoop49:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1312, TLoop49
+
+		li $t0, 0x00f0f000
+		li $t1, 1312
+TLoop50:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1320, TLoop50
+
+		li $t0, 0x00ffffff
+		li $t1, 1320
+TLoop51:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1336, TLoop51
+
+		li $t0, 0x00ff0000
+		li $t1, 1336
+TLoop52:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1352, TLoop52
+
+		li $t0, 0x00ffffff
+		li $t1, 1352
+TLoop53:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1368, TLoop53
+
+		li $t0, 0x00f0f000
+		li $t1, 1368
+TLoop54:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1376, TLoop54
+
+		li $t0, 0x00ffffff
+		li $t1, 1376
+TLoop55:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1404, TLoop55
+
+		li $t0, 0x000000ff
+		li $t1, 1404
+TLoop56:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1412, TLoop56
+
+		li $t0, 0x00ffffff
+		li $t1, 1412
+TLoop57:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1476, TLoop57
+
+		li $t0, 0x00ff0000
+		li $t1, 1476
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1480
+TLoop58:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1532, TLoop58
+
+		li $t0, 0x000000ff
+		li $t1, 1532
+TLoop59:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1540, TLoop59
+
+		li $t0, 0x00ffffff
+		li $t1, 1540
+TLoop60:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1604, TLoop60
+
+		li $t0, 0x00ff0000
+		li $t1, 1604
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1608
+TLoop61:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1660, TLoop61
+
+		li $t0, 0x000000ff
+		li $t1, 1660
+TLoop62:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1668, TLoop62
+
+		li $t0, 0x00ffffff
+		li $t1, 1668
+TLoop63:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1788, TLoop63
+
+		li $t0, 0x000000ff
+		li $t1, 1788
+TLoop64:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1796, TLoop64
+
+		li $t0, 0x00ffffff
+		li $t1, 1796
+TLoop65:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1916, TLoop65
+
+		li $t0, 0x000000ff
+		li $t1, 1916
+TLoop66:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 2048, TLoop66
+
+		jr	$ra
+
+
+DRAWBOARD:
+		li $t0, 0x000000ff
+		li $t1, 0
+DBLoop1:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 132, DBLoop1
+
+		li $t0, 0x00ffffff
+		li $t1, 132
+DBLoop2:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 252, DBLoop2
+
+		li $t0, 0x000000ff
+		li $t1, 252
+DBLoop3:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 260, DBLoop3
+
+		li $t0, 0x00ffffff
+		li $t1, 260
+DBLoop4:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 288, DBLoop4
+
+		li $t0, 0x00f0f000
+		li $t1, 288
+DBLoop5:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 348, DBLoop5
+
+		li $t0, 0x00ffffff
+		li $t1, 348
+DBLoop6:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 380, DBLoop6
+
+		li $t0, 0x000000ff
+		li $t1, 380
+DBLoop7:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 388, DBLoop7
+
+		li $t0, 0x00ffffff
+		li $t1, 388
+DBLoop8:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 416, DBLoop8
+
+		li $t0, 0x00f0f000
+		li $t1, 416
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 420
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 424
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 428
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 432
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 436
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 440
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 444
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 448
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 452
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 456
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 460
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 464
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 468
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 472
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 476
+DBLoop9:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 508, DBLoop9
+
+		li $t0, 0x000000ff
+		li $t1, 508
+DBLoop10:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 516, DBLoop10
+
+		li $t0, 0x00ffffff
+		li $t1, 516
+DBLoop11:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 544, DBLoop11
+
+		li $t0, 0x00f0f000
+		li $t1, 544
+DBLoop12:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 604, DBLoop12
+
+		li $t0, 0x00ffffff
+		li $t1, 604
+DBLoop13:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 636, DBLoop13
+
+		li $t0, 0x000000ff
+		li $t1, 636
+DBLoop14:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 644, DBLoop14
+
+		li $t0, 0x00ffffff
+		li $t1, 644
+DBLoop15:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 672, DBLoop15
+
+		li $t0, 0x00f0f000
+		li $t1, 672
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 676
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 680
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 684
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 688
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 692
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 696
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 700
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 704
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 708
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 712
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 716
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 720
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 724
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 728
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 732
+DBLoop16:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 764, DBLoop16
+
+		li $t0, 0x000000ff
+		li $t1, 764
+DBLoop17:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 772, DBLoop17
+
+		li $t0, 0x00ffffff
+		li $t1, 772
+DBLoop18:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 800, DBLoop18
+
+		li $t0, 0x00f0f000
+		li $t1, 800
+DBLoop19:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 860, DBLoop19
+
+		li $t0, 0x00ffffff
+		li $t1, 860
+DBLoop20:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 892, DBLoop20
+
+		li $t0, 0x000000ff
+		li $t1, 892
+DBLoop21:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 900, DBLoop21
+
+		li $t0, 0x00ffffff
+		li $t1, 900
+DBLoop22:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 928, DBLoop22
+
+		li $t0, 0x00f0f000
+		li $t1, 928
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 932
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 936
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 940
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 944
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 948
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 952
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 956
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 960
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 964
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 968
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 972
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 976
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 980
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 984
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 988
+DBLoop23:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1020, DBLoop23
+
+		li $t0, 0x000000ff
+		li $t1, 1020
+DBLoop24:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1028, DBLoop24
+
+		li $t0, 0x00ffffff
+		li $t1, 1028
+DBLoop25:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1056, DBLoop25
+
+		li $t0, 0x00f0f000
+		li $t1, 1056
+DBLoop26:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1116, DBLoop26
+
+		li $t0, 0x00ffffff
+		li $t1, 1116
+DBLoop27:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1148, DBLoop27
+
+		li $t0, 0x000000ff
+		li $t1, 1148
+DBLoop28:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1156, DBLoop28
+
+		li $t0, 0x00ffffff
+		li $t1, 1156
+DBLoop29:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1184, DBLoop29
+
+		li $t0, 0x00f0f000
+		li $t1, 1184
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1188
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1192
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1196
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1200
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1204
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1208
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1212
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1216
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1220
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1224
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1228
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1232
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1236
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1240
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1244
+DBLoop30:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1276, DBLoop30
+
+		li $t0, 0x000000ff
+		li $t1, 1276
+DBLoop31:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1284, DBLoop31
+
+		li $t0, 0x00ffffff
+		li $t1, 1284
+DBLoop32:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1312, DBLoop32
+
+		li $t0, 0x00f0f000
+		li $t1, 1312
+DBLoop33:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1372, DBLoop33
+
+		li $t0, 0x00ffffff
+		li $t1, 1372
+DBLoop34:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1404, DBLoop34
+
+		li $t0, 0x000000ff
+		li $t1, 1404
+DBLoop35:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1412, DBLoop35
+
+		li $t0, 0x00ffffff
+		li $t1, 1412
+DBLoop36:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1440, DBLoop36
+
+		li $t0, 0x00f0f000
+		li $t1, 1440
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1444
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1448
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1452
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1456
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1460
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1464
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1468
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1472
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1476
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1480
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1484
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1488
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1492
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1496
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1500
+DBLoop37:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1532, DBLoop37
+
+		li $t0, 0x000000ff
+		li $t1, 1532
+DBLoop38:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1540, DBLoop38
+
+		li $t0, 0x00ffffff
+		li $t1, 1540
+DBLoop39:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1568, DBLoop39
+
+		li $t0, 0x00f0f000
+		li $t1, 1568
+DBLoop40:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1628, DBLoop40
+
+		li $t0, 0x00ffffff
+		li $t1, 1628
+DBLoop41:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1660, DBLoop41
+
+		li $t0, 0x000000ff
+		li $t1, 1660
+DBLoop42:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1668, DBLoop42
+
+		li $t0, 0x00ffffff
+		li $t1, 1668
+DBLoop43:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1696, DBLoop43
+
+		li $t0, 0x00f0f000
+		li $t1, 1696
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1700
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1704
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1708
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1712
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1716
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1720
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1724
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1728
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1732
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1736
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1740
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1744
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1748
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00f0f000
+		li $t1, 1752
+		sw $t0, 0xffff0000($t1)
+
+		li $t0, 0x00ffffff
+		li $t1, 1756
+DBLoop44:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1788, DBLoop44
+
+		li $t0, 0x000000ff
+		li $t1, 1788
+DBLoop45:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1796, DBLoop45
+
+		li $t0, 0x00ffffff
+		li $t1, 1796
+DBLoop46:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1824, DBLoop46
+
+		li $t0, 0x00f0f000
+		li $t1, 1824
+DBLoop47:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1884, DBLoop47
+
+		li $t0, 0x00ffffff
+		li $t1, 1884
+DBLoop48:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 1916, DBLoop48
+
+		li $t0, 0x000000ff
+		li $t1, 1916
+DBLoop49:
+		sw $t0, 0xffff0000($t1)
+		addi $t1, $t1, 4
+		bne $t1, 2048, DBLoop49
+
+		jr	$ra
+	
+>>>>>>> origin/master
 
 # Exit component
 #	Displays exit prompt and ends the program.
