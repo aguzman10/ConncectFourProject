@@ -353,7 +353,7 @@ PTurn:
 
 		# Check bounds for column selection
 
-		syscall
+		#syscall
 		# Check bounds of user input
 
 		slti	$t0, $v0, 1
@@ -515,8 +515,11 @@ easy:
 				lw	$t1, board($t0)		# Load the word at the base address plus offset ($t0)
 				bne	$t1, $zero, easy	# Restart prompt if column is full
 				move $t0, $a0
-				jal srn_loop
+				#jal srn_loop
 				move $a1, $t0
+				sll $a1, $a1, 2
+				sll $t0, $t0, 2
+				li $a0, 2
 
 				j	AIT_loop
 
