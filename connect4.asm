@@ -37,13 +37,10 @@ row_end:	.asciiz "|\n"
 title:		.asciiz	"\n===== Connect-Four =====\n"
 turn:		.asciiz "\nChoose column to drop piece: "
 
-<<<<<<< HEAD
-=======
 invalid_input:	.asciiz	"\nInvalid selection."
 column_full:	.asciiz	"\nColumn full."
 ranks: .space 28
 
->>>>>>> origin/master
 		.text
 # Entry point
 		#li	$v0, 4
@@ -225,7 +222,7 @@ MB_loop2:
 		j	MB_loop2		# Jump to start of loop
 MB_stop:
 		jr	$ra			# Jump back to caller
-<<<<<<< HEAD
+
 
 
 # DrawBoard component
@@ -320,9 +317,6 @@ DB_back:
 		jr	$ra
 #	TODO: (optional) return 0 in $v0 if drawn successfully, 1 if error?
 
-=======
-
->>>>>>> origin/master
 
 # PlayerTurn component
 #	Handles turns for players. Asks the player to choose a column to
@@ -332,25 +326,25 @@ DB_back:
 #		$a0 - the value to store to the board array
 #		$a1 - the color to draw to the bitmap display
 PTurn:
-<<<<<<< HEAD
+
 		# Store #a0 (indicator) on the stack
 		subi	$sp, $sp, 4		# Get space on stack for $a0
 		sw	$a0, 0($sp)		# Store $a0 on the stack
 
 		# User selects column
-=======
+
 
 		# Prompt user to select column and get user input
 		move	$s0, $a0
 		move	$s1, $a1
 
 		# Print turn message
->>>>>>> origin/master
+
 		li	$v0, 4
 		la	$a0, turn
 		syscall
 		li	$v0, 5
-<<<<<<< HEAD
+
 		syscall				# Get input from user
 
 		# Restore $a0 from the stack
@@ -358,14 +352,14 @@ PTurn:
 		addi	$sp, $sp, 4		# Remove space for $a0 from stack
 
 		# Check bounds for column selection
-=======
+
 		syscall
 		# Check bounds of user input
->>>>>>> origin/master
+
 		slti	$t0, $v0, 1
 		beq	$t0, 1, PT_invalid
 		slti	$t0, $v0, 8
-<<<<<<< HEAD
+
 		beq	$t0, $zero, PTurn	# Restart prompt if input > 7
 
 #	TODO: display error messages to user for invalid input (!)
@@ -413,7 +407,7 @@ PT_set:
 		lw	$ra, 0($sp)		# Load $ra back from the stack
 		addi	$sp, $sp, 12		# Remove space from stack
 		jr	$ra			# Jump back
-=======
+
 		beq	$t0, $zero, PT_invalid
 
 		# Check if column is empty
@@ -450,7 +444,7 @@ PT_invalid:
 
 
 
->>>>>>> origin/master
+
 
 
 
@@ -463,18 +457,27 @@ PT_invalid:
 AITurn:
 
 		# Get space on stack and store $ra
-		subi	$sp, $sp, 12
+		subi	$sp, $sp, 8
 		sw	$ra, 0($sp)
 		sw	$a0, 4($sp)
 
 		li	$v0, 4
 		la	$a0, ai_turn
 		syscall				# Print AI turn message
-
+		
+		la	$a0, diff_setting
+		lw	$v0, 0($a0)
+		li	$t7, 1
+		beq 	$v0, $t7, easy
+		
+		addi	$t7, $t7, 1
+		beq	$v0, $t7, medium
+		
+		addi	$t7, $t7, 1
+		beq	$v0, $t7, hard
+		
 		AIT_loop:
 				addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
-
-		#	TODO: check if bottom of column has been reached (!)
 
 				lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
 				beq	$t2, $zero, AIT_loop	# If the space is empty, move down again
@@ -484,7 +487,18 @@ AITurn:
 
 				# Place the marker on the board and jump back to caller
 				sw	$a0, board($t0)		# Store indicator value ($t3) at the base address plus offset ($t0)
-				subi	$sp, $sp, 12		# Get space on stack
+				
+				
+				# Store $ra and call CheckWin
+				move	$t0, $zero
+				move	$v1, $t0
+				jal	CheckWin
+
+				# Store $v0 and $a0 and call DrawBoard
+				jal	DrawBoard		# Draw the board
+				lw	$a0, 4($sp)
+				lw	$ra, 0($sp)
+				addi	$sp, $sp, 8		# Get space on stack
 
 		jr $ra
 
@@ -500,8 +514,11 @@ easy:
 				sll	$t0, $t0, 2		# Multiply $t0 by 4 (each space on board = 1 word = 4 bytes)
 				lw	$t1, board($t0)		# Load the word at the base address plus offset ($t0)
 				bne	$t1, $zero, easy	# Restart prompt if column is full
+				move $t0, $a0
+				jal srn_loop
+				move $a1, $t0
 
-				jal	AITurn		# $a0 has the column
+				j	AIT_loop
 
 medium:
 				# medium is mix of random and some strategy
@@ -524,25 +541,26 @@ medium:
 				addi $t1, $t1, 7
 				bgt $a0, $t1, greater_than_seven
 medium_return:
-				jal AITurn
+				j	AIT_loop
 
 				# check if out of bounds
 less_than_zero:
 				move $a0, $zero
-				j medium_return
+				j AIT_loop
 
 greater_than_seven:
 				move $a0, $t1
-				j medium_return
+				j AIT_loop
 
 hard:
 				# hard is pure strategy
 				jal AIStrat
-				jal AITurn
+				j	AIT_loop
 
 
 set_row_numbers:
-
+	subi	$sp, $sp, 4
+	sw	$ra, ($sp)
 # s0 = A
 	li $t0, 1
 	jal srn_loop
@@ -571,10 +589,13 @@ set_row_numbers:
   li $t0, 7
 	jal srn_loop
 	move $t0, $s6
-
+	
+	lw $ra, ($sp)
+	addi	$sp, $sp, 4
 	jr $ra
 
 srn_loop:
+			sll	$t0, $t0, 2		# multiply by 4
 				addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 
 
@@ -583,6 +604,7 @@ srn_loop:
 srn_up:
 				# Move back up a space on the board if the space isn't empty or the end of the column was reached
   			subi	$t0, $t0, 28		# Else, move back up one row (sub 4 * 7)
+  			# t0 = address of top
 
 				jr $ra
 
@@ -597,8 +619,6 @@ AIStrat:
 	# using $t9 as a flag to check if immediate or not
 		move $t9, $zero
 
-	# using $t10 as a flag as well
-		move $t10, $zero
 AIS_Loop:
 	# make a call to set_row_numbers
 	jal set_row_numbers
@@ -730,7 +750,7 @@ addi $sp, $sp, -4
 sw $a0, ($sp)
 addi $sp, $sp, 4
 addi $t9, $t9, 1
-jal AWC_second
+jal AIS_Loop
 
 skip_it:
 jr $ra
@@ -758,7 +778,7 @@ ADL_Delete:
 		# end ADL_Delete
 
 
-=======
+
 		# Store return address and arguments to the stack
 		#subi	$sp, $sp, 12
 		#sw	$ra, 0($sp)
@@ -780,159 +800,9 @@ ADL_Delete:
 		#beq	$t1, 3, AI_strat
 		#j	AI_error
 
-		j	AI_strat
-
-AI_strat:
-		subi	$sp, $sp, 12
-		sw	$ra, 0($sp)
-		sw	$a0, 4($sp)
-		sw	$a1, 8($sp)
-		jal	Minimax
-		move	$a0, $v0
-		lw	$a1, 8($sp)
-		jal	LowestDraw
-		lw	$ra, 0($sp)
-		lw	$a0, 4($sp)
-		addi	$sp, $sp, 12
-		sw	$a0, board($v0)
-		jr	$ra
+		j	AIStrat
 
 
-
-
-
-
-AI_error:
-		li	$v0, 4
-		la	$a0, error
-		syscall
-		j	Exit
-
-AI_back:
-		jr	$ra
-
-
-
-
-# Minimax
-#	$a0 - marker for AI
-#	$v0 - column to drop a piece in
-Minimax:
-	li	$s0, 0			# choice = 0
-	li	$s1, 0			# c
-	move	$s2, $a0		# marker
-Minimax1:
-	beq	$s1, 28, OUTOFBOUNDS	# CHANGE 28
-	lw	$t0, board($s1)
-	addi	$s1, $s1, 4
-	bne	$t0, $0, Minimax1	# if (c.isFull())
-	subi	$s1, $s1, 4
-
-	subi	$sp, $sp, 16
-	sw	$ra, 0($sp)
-	sw	$s0, 4($sp)
-	sw	$s1, 8($sp)
-	sw	$s2, 12($sp)
-	move	$a0, $s1
-	jal	Lowest			# idex i = getLowest()
-	move	$s6, $v0
-	#lw	$s1, 8($sp)
-	#lw	$s2, 12($sp)
-	li	$t0, 2
-	sw	$t0, board($s6)		# // store value
-	# NOTE: $a0 = address, $a1 = marker
-	move	$a1, $v0
-	lw	$a0, 12($sp)
-	jal	CheckWin		# int retVal = checkWin(player)
-	lw	$ra, 0($sp)
-	lw	$s0, 4($sp)
-	lw	$s1, 8($sp)
-	lw	$s2, 12($sp)
-	addi	$sp, $sp, 16
-
-	beq	$v0, 1, BREAK1		# if (retVal == 1)
-
-	li	$s3, 0			# d
-Minimax2:
-	beq	$s3, 28, Minimax3	# CHANGE 28
-	lw	$t0, board($s3)
-	addi	$s3, $s3, 4
-	bne	$t0, $0, Minimax2	# if (d.isFull())
-	subi	$s3, $s3, 4
-
-	subi	$sp, $sp, 20
-	sw	$ra, 0($sp)
-	sw	$s0, 4($sp)
-	sw	$s1, 8($sp)
-	sw	$s2, 12($sp)
-	sw	$s3, 16($sp)
-	move	$a0, $s3
-	jal	Lowest			# index j = getLowest()
-	move	$s7, $v0
-	#lw	$s2, 12($sp)
-	#lw	$s3, 16($sp)
-	li	$t0, 1
-	sw	$t0, board($s7)		# // store value
-	move	$a1, $v0
-	lw	$a0, 12($sp)
-	jal	CheckWin		# int retVal2 = checkWin(opponent)
-	lw	$ra, 0($sp)
-	lw	$s0, 4($sp)
-	lw	$s1, 8($sp)
-	lw	$s2, 12($sp)
-	lw	$s3, 16($sp)
-	addi	$sp, $sp, 20
-	sw	$0, board($s6)
-	sw	$0, board($s7)
-
-	beq	$v0, 1, BREAK2		# if (retVal2 == 1)
-
-	addi	$s3, $s3, 4
-	j	Minimax2
-Minimax3:
-	addi	$s1, $s1, 4
-	j	Minimax1
-BREAK2:
-	addi	$s0, $s0, 4		# choice++
-	addi	$s1, $s1, 4		# c++
-	j	Minimax1
-BREAK1:
-	move	$v0, $s0
-	jr	$ra
-
-OUTOFBOUNDS:
-	li	$s0, 0			# choice = 0
-OUTOFBOUNDS1:
-	beq	$s0, 28, Exit
-	lw	$t0, board($s0)
-	addi	$s0, $s0, 4
-	bne	$t0, 0, OUTOFBOUNDS1
-	subi	$s0, $s0, 4
-	#subi	$sp, $sp, 12
-	#sw	$ra, 0($sp)
-	#sw	$s0, 4($sp)
-	#sw	$s2, 8($sp)
-	#move 	$a0, $s0
-	#jal	Lowest
-	#lw	$ra, 0($sp)
-	#lw	$s2, 8($sp)
-	#sw	$s2, board($v0)
-	move	$v0, $s0
-	jr	$ra
-
-
-
-# Finds the lowest empty row in the given column
-#	$a0 - column address
-Lowest:
-	move	$t0, $a0
-Lowest1:
-	addi	$t0, $t0, 28
-	lw	$t1, board($t0)
-	beq	$t1, $0, Lowest1
-	subi	$t0, $t0, 28
-	move	$v0, $t0
-	jr	$ra
 
 
 # Finds the lowest empty row in the given column
@@ -966,7 +836,7 @@ LowestDraw1:
 
 
 
->>>>>>> origin/master
+
 # CheckWin component
 #	Checks for wins on the board (horizontal, vertical, and diagonal).
 #	If a win is found, 1 is returned in $v0. Otherwise, 0 is returned in $v0.
@@ -1076,8 +946,8 @@ CW_win:
 		addi	$sp, $sp, 4
 		jr	$ra
 
-<<<<<<< HEAD
-=======
+
+
 
 TITLE:
 		li $t0, 0x000000ff
@@ -2543,7 +2413,7 @@ DBLoop49:
 
 		jr	$ra
 
->>>>>>> origin/master
+
 
 # Exit component
 #	Displays exit prompt and ends the program.
