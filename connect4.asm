@@ -40,6 +40,8 @@ turn:		.asciiz "\nChoose column to drop piece: "
 invalid_input:	.asciiz	"\nInvalid selection."
 column_full:	.asciiz	"\nColumn full."
 ranks: .space 28
+#########################################################
+ch1:		.asciiz "checkpoint "
 
 		.text
 # Entry point
@@ -105,6 +107,7 @@ PvE_loop:
 		li	$a0, 1
 		li	$a1, 0x00ff0000
 		jal	PTurn			# Jump and link to PTurn (player turn)
+		
 		beq	$v0, 1, PvE_win		# If win, branch to PvE_win
 		li	$a0, 2
 		li	$a1, 0x0000ff00
@@ -477,6 +480,9 @@ AITurn:
 		beq	$v0, $t7, hard
 		
 		AIT_loop:
+		
+				
+				
 				addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 
 				lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
@@ -528,7 +534,9 @@ medium:
 				# it will use winning strategy to determine the best spot to play
 				# then, it will use a random number between 0 and 2 to determine to play to the column on the left, right on the best column, or on the right to play
 				#jal	winning_strategy	# call winning strategy
-
+				
+			
+				
 				# pick a random integer between 0 and 2
 				li	$a1, 3			# get random number between 0 and 2
 				li	$v0, 42			# instruction for get random integer
@@ -537,6 +545,7 @@ medium:
 				addi $sp, $sp, -4
 				sw $a0, ($sp)
 				jal AIStrat
+				beqz $v0, easy
 				lw $t0, ($sp)
 				addi $sp, $sp, 4
 				add $a0, $a0, $t0
@@ -558,40 +567,43 @@ greater_than_seven:
 hard:
 				# hard is pure strategy
 				jal AIStrat
+				beqz $v0, easy
 				j	AIT_loop
 
 
 set_row_numbers:
 	subi	$sp, $sp, 4
 	sw	$ra, ($sp)
+	la	$t3, board
+	li	$t4, 196
 # s0 = A
 	li $t0, 1
 	jal srn_loop
-	move $t0, $s0 # s0 has the top row number for A
+	add $s0,$t3, $t0 # s0 has the top row number for A
 # s1 = B
 	li $t0, 2
 	jal srn_loop
-	move $t0, $s1
+	add $s1,$t3, $t0 # s0 has the top row number for A
 # s2 = C
-  li $t0, 3
+  	li $t0, 3
 	jal srn_loop
-	move $t0, $s2
+	add $s2,$t3, $t0 # s0 has the top row number for A
 # s3 = D
 	li $t0, 4
 	jal srn_loop
-	move $t0, $s3
+	add $s3,$t3, $t0 # s0 has the top row number for A
 # s4 = E
 	li $t0, 5
 	jal srn_loop
-	move $t0, $s4
+	add $s4,$t3, $t0 # s0 has the top row number for A
 # s5 = F
 	li $t0, 6
 	jal srn_loop
-	move $t0, $s5
+	add $s5,$t3, $t0 # s0 has the top row number for A
 # s6 = G
-  li $t0, 7
+  	li $t0, 7
 	jal srn_loop
-	move $t0, $s6
+	add $s6,$t3, $t0 # s0 has the top row number for A
 	
 	lw $ra, ($sp)
 	addi	$sp, $sp, 4
@@ -599,17 +611,21 @@ set_row_numbers:
 
 srn_loop:
 			sll	$t0, $t0, 2		# multiply by 4
-				addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
+srn_main:
+			addi	$t0, $t0, 28		# Move down one row in the column (add 4 * 7)
 
 
-			  lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
-				beq	$t2, $zero, srn_loop	# If the space is empty, move down again
+			lw	$t2, board($t0)		# Load the word at the base address plus offset ($t0)
+			bge	$t2, $t4, srn_up	# let's stay within bounds
+			beq	$t2, $zero, srn_main	# If the space is empty, move down again
 srn_up:
 				# Move back up a space on the board if the space isn't empty or the end of the column was reached
   			subi	$t0, $t0, 28		# Else, move back up one row (sub 4 * 7)
   			# t0 = address of top
 
 				jr $ra
+
+
 
 AIStrat:
 	# t0 = current row
@@ -618,9 +634,13 @@ AIStrat:
 	# t3 = third piece
 	# t4 = fourth piece
 		li $t8, 1 # used as is
+		addi $sp, $sp, -4
+		sw $ra, ($sp)
 
 	# using $t9 as a flag to check if immediate or not
 		move $t9, $zero
+		
+		
 
 AIS_Loop:
 	# make a call to set_row_numbers
@@ -637,23 +657,53 @@ AIS_Loop:
 	subi $t1, $t1, 28 # get the postion of top of column A
 	beq $s0, $t1, skip_A # if top of column A has been reached, move on
 	# else, this means that column A can have at least one more piece
+
 	move $a1, $s0
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
+	
+	#############################################################
+				la $a0, ch1
+				li $v0, 4
+				syscall
+				li $a0, 2
+				li $v0, 1
+				syscall
+	
 
 	jal AI_Win_Check
 
 	lw $ra, ($sp)
 	addi $sp, $sp, 4
+	
+	
+	
+	#############################################################
+				la $a0, ch1
+				li $v0, 4
+				syscall
+				li $a0, 3
+				li $v0, 1
+				syscall
 
 skip_A:
 	addi $t1, $t1, 4 # get the position of top of column B
 	beq $s1, $t1, skip_B # if top of B, move on
 	# else, this means that column B can have at least one more piece
+	
 	move $a1, $s1
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
 	jal AI_Win_Check
+	
+	
+	#############################################################
+				la $a0, ch1
+				li $v0, 4
+				syscall
+				li $a0, 4
+				li $v0, 1
+				syscall
 
 	lw $ra, ($sp)
 	addi $sp, $sp, 4
@@ -661,6 +711,7 @@ skip_A:
 skip_B:
 	addi $t1, $t1, 4 # get teh position of top of column C
 	beq $s2, $t1, skip_C # if top of C, move on
+	
 	move $a1, $s2
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
@@ -672,6 +723,7 @@ skip_B:
 skip_C:
 	addi $t1, $t1, 4 # get the position of top of column D
 	beq $s3, $t1, skip_D	# if top of D, move on
+
 	move $a1, $s3
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
@@ -683,7 +735,8 @@ skip_C:
 skip_D:
 	addi $t1, $t1, 4 # get the position of top of column E
 	beq $s4, $t1, skip_E # if tope of E, move on
-	move $a1, $s3
+
+	move $a1, $s4
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
 	jal AI_Win_Check
@@ -694,7 +747,7 @@ skip_D:
 skip_E:
 	addi $t1, $t1, 4 # get the position of top of column F
 	beq $s5, $t1, skip_F # if top of F, move on
-	move $a1, $s4
+	move $a1, $s5
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
 	jal AI_Win_Check
@@ -705,7 +758,8 @@ skip_E:
 skip_F:
 	addi $t1, $t1, 4 # get the position of top of column F
 	beq $s6, $t1, skip_G # if top of G, move on
-	move $a1, $s5
+
+	move $a1, $s6
 	addi $sp, $sp, -4
 	sw $ra, ($sp)
 	jal AI_Win_Check
@@ -715,6 +769,8 @@ skip_F:
 
 skip_G:
 	# nothing is good
+	lw $ra, ($sp)
+	addi $sp, $sp, 4
 	jr $ra
 	# end AIS_Loop
 
@@ -727,38 +783,58 @@ best_spot:
 AI_Win_Check:
 # drop a piece and check win
 # first, drop an AI piece
-li $a0, 2
-jal AI_Drop_Loop
-jal CheckWin
+	li $a0, 2
+	
+
+	addi	$sp, $sp, -12
+	sw	$ra, ($sp)
+	sw	$s0, 4($sp)
+	sw	$t3, 8($sp)
+	jal AI_Drop_Loop
+	jal AI_CheckWin
+	lw	$t3, 8($sp)
+	lw	$s0, 4($sp)
+	add 	$a1, $a1, $t3
+	
 
 # check if AI wins
-beq $v0, $t8, found_it
-jal AIS_Loop
-jal ADL_Delete
+	beq $v0, $t8, found_it
+	#jal AIS_Loop
+	jal ADL_Delete
 
 
 # second, drop a user piece
-li $a0, 1
-jal AI_Drop_Loop
-jal CheckWin
+	li $a0, 1
+	jal AI_Drop_Loop
+
+	sw	$s0, 4($sp)
+	sw	$t3, 8($sp)
+	jal AI_CheckWin
+	lw	$t3, 8($sp)
+	lw	$s0, 4($sp)
+
+	add $a1, $a1, $t3
 
 # check if player wins
-beq $v0, $t8, found_it
-jal AIS_Loop
+	beq $v0, $t8, found_it
+	#jal AIS_Loop
 
 # else if first time, store the current a1 into stack and try again
 # first, check if this has happened yet
-bnez $t9, skip_it # check if first time
-addi $sp, $sp, -4
-sw $a0, ($sp)
-addi $sp, $sp, 4
-addi $t9, $t9, 1
-jal AIS_Loop
-
+	#bnez $t9, skip_it # check if first time
+	#addi $sp, $sp, -4
+	#sw $a0, ($sp)
+	#addi $sp, $sp, 4
+	#addi $t9, $t9, 1
+	#jal AIS_Loop
+	
 skip_it:
+	lw $ra, ($sp)
+	addi $sp, $sp, 12
 jr $ra
 
 found_it:
+	addi $sp, $sp, 12
 	beqz $t9, best_spot
 	addi $sp, $sp, -4
 	lw $a0, ($sp)
@@ -838,7 +914,9 @@ LowestDraw1:
 	jr	$ra
 
 
-
+AI_CheckWin:
+	sub	$a1, $a1, $t3
+	
 
 # CheckWin component
 #	Checks for wins on the board (horizontal, vertical, and diagonal).
